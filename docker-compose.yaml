@@ -15,7 +15,7 @@ services:
     volumes:
       - ${TDB2_DATA}:/fuseki/databases/${TDB2_ENDPOINT}
     environment:
-      - JAVA_OPTIONS=${JAVA_OPTIONS}
+      - JAVA_OPTIONS=${JVM_ARGS}
     command: --update --tdb2 --port 5430 --loc /fuseki/databases/${TDB2_ENDPOINT} /${TDB2_ENDPOINT}
     networks:
       - app_net
@@ -47,16 +47,7 @@ services:
     volumes:
       - "${UCE_CONFIG_PATH}:/app/config/uceConfig.json"
       - "./database:/app/database"
-    command: [
-      "java",
-      "--add-opens=java.base/java.util=ALL-UNNAMED",
-      "--add-opens=java.util/java.base=ALL-UNNAMED",
-      "-jar",
-      "./target/webportal-jar-with-dependencies.jar",
-      "-cf",
-      "/app/config/uceConfig.json"
-    ]
-
+    command: ["java","--add-opens=java.base/java.util=ALL-UNNAMED","--add-opens=java.util/java.base=ALL-UNNAMED","-jar", "./target/webportal-jar-with-dependencies.jar", "-cf","/app/config/uceConfig.json"]
 
   uce-importer:
     container_name: uce-importer
@@ -71,14 +62,10 @@ services:
     volumes:
       - "./database:/app/database"
       # MOUNT HERE ALL UIMA CORPORA INTO THE '/app/input/corpora/zobodat' PATH 
-      - "./../test_data/corpora/zobodat:/app/input/corpora/zobodat"
-    command: [
-      "java",
-      "-jar",
-      "./target/importer.jar",
-      "-srcDir", "/app/input/corpora/",
-      "-num", "1",
-      "-t", "${IMPORTER_THREADS}"
+      #- "./../test_data/corpora/zobodat:/app/input/corpora/zobodat"
+      - "./corpora/test_data/zobodat:/app/input/corpora/zobodat"
+    #command: [ "/bin/sh", "-c", "sleep 7 && java -jar ./target/importer.jar -srcDir /app/input/corpora/ -num 1 -t ${IMPORTER_THREADS}" ]
+    command: ["java","-jar","./target/importer.jar","-srcDir", "/app/input/corpora/","-num", "1","-t", "${IMPORTER_THREADS}"
     ]
 
   uce-postgresql-db:
@@ -101,53 +88,54 @@ services:
         interval: 5s
         timeout: 5s
         start_interval: 1s
+        start_period: 30s
         retries: 20
 
-  uce-minio-storage:
-    image: minio/minio
-    container_name: minio
-    ports:
-      - "9000:9000"
-      - "9001:9001"
-    environment:
-      - MINIO_ROOT_USER=admin
-      - MINIO_ROOT_PASSWORD=12345678
-    volumes:
-      - ${MINIO_STORAGE_DATA}:/data
-    command: server /data --console-address ":9001"
-    networks:
-      - app_net
+#  uce-minio-storage:
+#    image: minio/minio
+#    container_name: minio
+#    ports:
+#      - "9000:9000"
+#      - "9001:9001"
+#    environment:
+#      - MINIO_ROOT_USER=admin
+#      - MINIO_ROOT_PASSWORD=12345678
+#    volumes:
+#      - ${MINIO_STORAGE_DATA}:/data
+#    command: server /data --console-address ":9001"
+#    networks:
+#      - app_net
 
-  uce-keycloak-auth:
-    container_name: uce-keycloak-auth
-    image: quay.io/keycloak/keycloak:26.2.5
-    ports:
-      - "8080:8080"
-    volumes:
-      - ${KC_REALM_IMPORT_PATH}:/opt/keycloak/data/import/uce-realm.json
-    command:
-      - start
-      - --features=scripts
-      - --import-realm
-      - --import-path=/opt/keycloak/data/import/uce-realm.json
-    environment:
-      KC_BOOTSTRAP_ADMIN_USERNAME: ${KC_ADMIN_USERNAME}
-      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KC_ADMIN_PW}
-      KC_HOSTNAME_STRICT_BACKCHANNEL: true
-      KC_HOSTNAME_STRICT: false
-      KC_HTTP_RELATIVE_PATH: /
-      KC_HTTP_ENABLED: true
-      KC_HEALTH_ENABLED: true
-      KC_METRICS_ENABLED: true
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    healthcheck:
-      test: ['CMD-SHELL', '[ -f /tmp/HealthCheck.java ] || echo "public class HealthCheck { public static void main(String[] args) throws java.lang.Throwable { System.exit(java.net.HttpURLConnection.HTTP_OK == ((java.net.HttpURLConnection)new java.net.URL(args[0]).openConnection()).getResponseCode() ? 0 : 1); } }" > /tmp/HealthCheck.java && java /tmp/HealthCheck.java http://localhost:8080/auth/health/live']
-      interval: 5s
-      timeout: 5s
-      retries: 20
-    networks:
-      - app_net
+#  uce-keycloak-auth:
+#    container_name: uce-keycloak-auth
+#    image: quay.io/keycloak/keycloak:26.2.5
+#    ports:
+#      - "8080:8080"
+#    volumes:
+#      - ${KC_REALM_IMPORT_PATH}:/opt/keycloak/data/import/uce-realm.json
+#    command:
+#      - start
+#      - --features=scripts
+#      - --import-realm
+#     - --import-path=/opt/keycloak/data/import/uce-realm.json
+#    environment:
+#      KC_BOOTSTRAP_ADMIN_USERNAME: ${KC_ADMIN_USERNAME}
+#      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KC_ADMIN_PW}
+#      KC_HOSTNAME_STRICT_BACKCHANNEL: true
+#      KC_HOSTNAME_STRICT: false
+#      KC_HTTP_RELATIVE_PATH: /
+#      KC_HTTP_ENABLED: true
+#      KC_HEALTH_ENABLED: true
+#      KC_METRICS_ENABLED: true
+#    extra_hosts:
+#      - "host.docker.internal:host-gateway"
+#    healthcheck:
+#      test: ['CMD-SHELL', '[ -f /tmp/HealthCheck.java ] || echo "public class HealthCheck { public static void main(String[] args) throws java.lang.Throwable { System.exit(java.net.HttpURLConnection.HTTP_OK == ((java.net.HttpURLConnection)new java.net.URL(args[0]).openConnection()).getResponseCode() ? 0 : 1); } }" > /tmp/HealthCheck.java && java /tmp/HealthCheck.java http://localhost:8080/auth/health/live']
+#      interval: 5s
+#      timeout: 5s
+#      retries: 20
+#    networks:
+#      - app_net
 
 networks:
   app_net:

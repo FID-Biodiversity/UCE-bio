@@ -7,6 +7,7 @@ RUN apt-get update && apt-get install -y maven
 
 # Copy the entire uce.portal directory
 COPY ./uce.portal ./uce.portal
+COPY ./database ./database
 
 # Set the working directory to uce.portal
 WORKDIR /app/uce.portal
@@ -20,6 +21,10 @@ RUN mvn clean package -DskipTests
 
 WORKDIR /app/uce.portal/uce.corpus-importer/
 
+COPY ./database ../../database
+
 # Command to run the application
 # The name webportal.jar is finalized in the pom.xml of the uce.corpus-importer project.
 #CMD ["java", "-jar", "./target/importer-jar-with-dependencies.jar"]
+
+

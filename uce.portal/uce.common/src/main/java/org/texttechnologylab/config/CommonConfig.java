@@ -23,11 +23,11 @@ public class CommonConfig {
         // Load in the common conf in the java properties() style
         try {
             // Load the .conf file from the resources directory
-            var inputStream = getClass().getClassLoader().getResourceAsStream("common.conf");
+            var inputStream = getClass().getClassLoader().getResourceAsStream("common-kube.conf");
             if (inputStream != null) {
                 properties.load(inputStream);
             } else {
-                throw new RuntimeException("common.conf not found not found in the classpath");
+                throw new RuntimeException("common-kube.conf not found not found in the classpath");
             }
         } catch (Exception e) {
             throw new RuntimeException("Error loading config.conf: " + e.getMessage());

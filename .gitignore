@@ -54,3 +54,7 @@ build/
 /rag/src/cBERT/data
 /rag/src/cBERT/models
 __pycache__
+
+
+corpora/*
+push-harbor*

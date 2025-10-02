@@ -8,6 +8,9 @@ RUN apt-get update && apt-get install -y maven
 # Copy the entire uce.portal directory
 COPY ./uce.portal ./uce.portal
 
+COPY ./kubernetes-corpus-importer/UceConfig.json /app/config/uceConfig.json
+
+
 # Set the working directory to uce.portal
 WORKDIR /app/uce.portal
 RUN mvn clean install -DskipTests
@@ -20,8 +23,9 @@ EXPOSE 4567
 
 WORKDIR /app/uce.portal/uce.web/
 
+COPY ./database ../../database
+
 # Command to run the application
 # The name webportal.jar is finalized in the pom.xml of the uce.web project.
 # Maybe: "-jar-with-dependencies" needs to be added behind webportal
-
 #CMD ["java", "-jar", "./target/webportal-jar-with-dependencies.jar"]
