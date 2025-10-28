@@ -18,3 +18,4 @@ TABLESPACE pg_default;
 
 ALTER TABLE IF EXISTS public.documentchunkembeddings
     OWNER to postgres;
+    /*OWNER to uce_test_user;*/

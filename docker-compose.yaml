@@ -58,16 +58,17 @@ services:
       uce-postgresql-db:
         condition: service_healthy
     networks:
-      - app_net
+      #- app_net
+      - uce-test-network
     volumes:
       - "./database:/app/database"
       # MOUNT HERE ALL UIMA CORPORA INTO THE '/app/input/corpora/zobodat' PATH 
-      #- "./../test_data/corpora/zobodat:/app/input/corpora/zobodat"
       - "./corpora/test_data/zobodat:/app/input/corpora/zobodat"
+      #- "./corpora/test_data/zobodat:/app/input/corpora/zobodat"
     #command: [ "/bin/sh", "-c", "sleep 7 && java -jar ./target/importer.jar -srcDir /app/input/corpora/ -num 1 -t ${IMPORTER_THREADS}" ]
     command: ["java","-jar","./target/importer.jar","-srcDir", "/app/input/corpora/","-num", "1","-t", "${IMPORTER_THREADS}"
     ]
-
+#docker run   --name kube-uce-importer --network uce-test-network  -v ./corpora/test_data/zobodat:/app/input/corpora/zobodat -v ./database:/app/database kube-uce-importer java -jar ./target/importer.jar -srcDir /app/input/corpora/ -num 1 -t 1
   uce-postgresql-db:
     container_name: uce-postgresql-db
     image: docker.texttechnologylab.org/uce/uce-postgresql:0.0.1
@@ -76,13 +77,15 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: 1234 
     ports:
-      - "8002:5432"
+      - "16802:5432"
     volumes:
       #- ./../backups/2025-07-03_BIOfid_Nova-Data/db-data:/var/lib/postgresql/data
       - ${POSTGRESQL_CONFIG}:/etc/postgresql.conf
+      
     command: -c config_file=/etc/postgresql.conf
     networks:
-      - app_net
+      #- app_net
+      - uce-test-network
     healthcheck:
         test: ["CMD-SHELL", "pg_isready -U postgres"]
         interval: 5s
@@ -140,6 +143,8 @@ services:
 networks:
   app_net:
     driver: bridge
+  uce-test-network:
+     external: true
 
 volumes:
   pgdata:

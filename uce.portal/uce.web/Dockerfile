@@ -8,16 +8,19 @@ WORKDIR /app
 COPY ./uce.portal ./uce.portal
 
 # Override the default config
-COPY ./uce.portal/uce.common/src/main/resources/common-release.conf /app/uce.portal/uce.common/src/main/resources/common.conf
+
+COPY ./uce.portal/uce.common/src/main/resources/common-kube.conf /app/uce.portal/uce.common/src/main/resources/common.conf
 
 # Set the working directory to uce.portal
 WORKDIR /app/uce.portal
+
+
 
 # We are also building the target jar here; we only need uce.web
 RUN mvn clean install -DskipTests -pl uce.web -am
 
 FROM openjdk:21-jdk-slim
-
+COPY ./kubernetes-corpus-importer/defaultUceConfig.json ../config/uceConfig.json
 # Expose the port that your Spark application runs on
 EXPOSE 4567
 
@@ -27,7 +30,7 @@ COPY --from=builder /app/uce.portal/uce.web/target/webportal-jar-with-dependenci
 COPY ./uce.portal/resources /app/uce.portal/resources
 
 WORKDIR /app/uce.portal/uce.web/
-
+COPY ./database ../../database
 # Command to run the application
 # The name webportal.jar is finalized in the pom.xml of the uce.web project.
 # Maybe: "-jar-with-dependencies" needs to be added behind webportal

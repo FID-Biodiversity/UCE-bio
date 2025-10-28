@@ -8,7 +8,8 @@ RUN apt-get update && apt-get install -y maven
 # Copy the entire uce.portal directory
 COPY ./uce.portal ./uce.portal
 
-COPY ./kubernetes-corpus-importer/UceConfig.json /app/config/uceConfig.json
+COPY ./kubernetes-corpus-importer/17-10-uceConfig.json /app/config/uceConfig.json
+COPY ./uce.portal/uce.common/src/main/resources/common-kube.conf /app/uce.portal/uce.common/src/main/resources/common.conf
 
 
 # Set the working directory to uce.portal

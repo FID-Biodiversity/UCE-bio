@@ -16,3 +16,4 @@ CREATE TABLE IF NOT EXISTS public.documentsentenceembeddings
 
 ALTER TABLE IF EXISTS public.documentsentenceembeddings
     OWNER to postgres;
+    /*OWNER to uce_test_user;*/
