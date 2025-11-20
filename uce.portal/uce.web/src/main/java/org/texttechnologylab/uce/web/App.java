@@ -268,6 +268,10 @@ public class App {
             // else we need to read in the file from the given path.
             var path = imgString.replace("FILE::", "");
             return ImageUtils.EncodeImageToBase64(path);
+        } else if (imgString.startsWith("LOCALFILE::")) {
+            // just save the path
+            String path = imgString.replace("LOCALFILE::", "");
+            return path;
         }
         return "";
     }
