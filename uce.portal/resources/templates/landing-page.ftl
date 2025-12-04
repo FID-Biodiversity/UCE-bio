@@ -8,7 +8,7 @@
                 <i class="fas fa-info-circle color-prime large-font"></i>
             </button>
         </div>
-        <div class="content display-none text block-text">
+        <div class="content display-block text block-text">
             <hr class="mt-3 mb-3"/>
             ${uceConfig.getMeta().getDescription()!languageResource.get("noCorpusDescription")}
         </div>
@@ -69,7 +69,7 @@
 
         <!-- clal to search -->
         <div class="flexed align-items-center justify-content-center mt-3 pb-4">
-            <a class="clickable text mb-0 text small ml-1" onclick="navigateToView('search')">
+            <a class="clickable text mb-0 text small ml-1" onclick="navigateToView('search')" style="font-size: 2rem;">
                 <i class="fas fa-search mr-1"></i> ${languageResource.get("callForSearch")}
             </a>
         </div>

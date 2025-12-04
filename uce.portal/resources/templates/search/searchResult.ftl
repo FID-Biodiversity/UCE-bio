@@ -28,7 +28,7 @@
 
     <div class="row mb-0 mr-0 ml-0 pb-5">
 
-        <div class="col-lg-3 position-relative search-row" data-type="left">
+        <div class="col-lg-3 position-relative search-row" style="display: None;" data-type="left">
             <div class="side-bar-container">
                 <div class="side-bar">
 
@@ -50,7 +50,7 @@
             </div>
         </div>
 
-        <div class="col-lg-6 search-row" data-type="mid">
+        <div class="col-lg-6 search-row mx-auto" data-type="mid">
 
             <div class="sort-container pl-3 pr-3 pt-2 pb-2 mb-3">
 

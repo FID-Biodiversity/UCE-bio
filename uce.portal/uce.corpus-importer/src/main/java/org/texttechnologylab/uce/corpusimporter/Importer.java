@@ -386,6 +386,7 @@ public class Importer {
             if (existingCorpus != null) { // If we have the corpus, use that.
                 return existingCorpus;
             }
+            
             throw new DatabaseOperationException("The corpus config specified to add to an existing corpus, " +
                     "but no corpus with the name " + corpusConfig.getName() + " exists.");
         }

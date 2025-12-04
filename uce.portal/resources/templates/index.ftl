@@ -2,16 +2,13 @@
 <html lang="${languageResource.getDefaultLanguage()}">
 <head>
     <link rel="stylesheet"
-          href="https://cdn.jsdelivr.net/npm/bootstrap@4.3.1/dist/css/bootstrap.min.css"
-          integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T"
-          crossorigin="anonymous">
-    <link
-            href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"
+          href="css/bootstrap.min.css">
+    <link href="css/animate.min.css"
             rel="stylesheet">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
-          crossorigin=""/>
-    <link href="https://unpkg.com/tabulator-tables@6.3.1/dist/css/tabulator.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/leaflet.css">
+    <link href="css/tabulator.min.css" rel="stylesheet">
+    <link href="fontawesome-free-7.1.0-web/css/all.css" rel="stylesheet">
+
     <style>
         <#include "*/css/site.css">
         <#include "*/css/simple-loader.css">
@@ -24,32 +21,30 @@
         <#include "*/css/drawflow.css">
         <#include "*/css/analysis.css">
 
+
         <#-- leaflet specific requirements -->
         <#include "*/css/leaflet/MarkerCluster.css">
         <#include "*/css/leaflet/MarkerCluster.Default.css">
     </style>
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://unpkg.com/tabulator-tables@6.3.1/dist/js/tabulator.min.js"></script>
-    <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
-    <script src="https://kit.fontawesome.com/b0888ca2eb.js"
-            crossorigin="anonymous"></script>
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
-            crossorigin=""></script>
-    <script
-            src="https://cdn.jsdelivr.net/npm/popper.js@1.14.7/dist/umd/popper.min.js"
-            integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1"
-            crossorigin="anonymous"></script>
-    <script
-            src="https://cdn.jsdelivr.net/npm/bootstrap@4.3.1/dist/js/bootstrap.min.js"
-            integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM"
-            crossorigin="anonymous"></script>
+        <script src="js/external-js/jquery-3.6.0.min.js"></script>
+        <script src="js/external-js/tabulator.min.js"></script>
+        <script src="js/external-js/xlsx.full.min.js"></script>
+        <!-- <script src="js/external-js/b0888ca2eb.js"></script>  FontAwesome kit -->
+        <!-- <script defer src="fontawesome-free-7.1.0-web/js/all.js"></script>-->
+        <script src="js/external-js/leaflet.js"></script>
+        <script src="js/external-js/popper.min.js"></script>
+        <script src="js/external-js/bootstrap.min.js"></script>
+        <script src="js/external-js/Control.Geocoder.js"></script>
+        <script src="js/external-js/leaflet.markercluster.js"></script>
+        <script src="js/external-js/marked.min.js"></script>
+        <script src="js/external-js/gsap.min.js"></script>
+        <script src="js/external-js/require.js"></script>
     <!-- For corpus universe three.js -->
     <script type="importmap">
         {
           "imports": {
-            "three": "https://unpkg.com/three@v0.161.0/build/three.module.js",
-            "three/addons/": "https://unpkg.com/three@v0.161.0/examples/jsm/"
+            "three": "js/external-js/three.module.js",
+            "three/addons/": "js/external-js/examples/jsm/"
           }
         }
     </script>
@@ -59,18 +54,16 @@
     <script src="js/visualization/cdns/d3js-790.js"></script>
     <script src="js/visualization/cdns/drawflow-last.js"></script>
     <!-- for leaflet search plugin -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css"/>
-    <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+    <link rel="stylesheet" href="css/leaflet-control-geocoder@3.3.1/"/>
+
     <!-- leaflet clusters and heatmap plugins -->
     <script src="js/visualization/cdns/leaflet-heat.js"></script>
-    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+
 
     <!-- for Markdown blocks -->
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script type="module" src="js/md-block.js"></script>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.4.0/gsap.min.js"></script>
-    <script src="https://requirejs.org/docs/release/2.3.5/minified/require.js"></script>
+
     <!--<script src="https://unpkg.com/@tweenjs/tween.js@^20.0.0/dist/tween.umd.js"></script>-->
     <title>${title}</title>
 </head>
@@ -169,6 +162,8 @@
                 <!-- right side buttons -->
                 <div class="flexed align-items-center nav-container">
                     <div class="flexed align-items-center nav-buttons">
+                        <a class="switch-view-btn btn text" data-id="landing" data-trigger="hover" data-toggle="popover"
+                            data-placement="bottom" data-content="Information"><i class="fas  fa-info color-prime"></i></a>
                         <a class="switch-view-btn btn text" data-id="search" data-trigger="hover" data-toggle="popover"
                            data-placement="bottom" data-content="Portal"><i class="fas fa-globe-europe color-prime"></i></a>
                         <a class="switch-view-btn btn text" data-id="lexicon" data-trigger="hover" data-toggle="popover"
@@ -234,12 +229,12 @@
     <div class="corpusUniverse-content-container main-content-container">
 
         <!-- landing page -->
-        <div class="view" data-id="landing">
+        <div class="view display-none" data-id="landing">
             <#include "*/landing-page.ftl" />
         </div>
 
         <!-- searching -->
-        <div class="view pt-5 display-none" data-id="search">
+        <div class="view pt-5" data-id="search">
 
             <!-- A small bg animation - nothing more -->
             <div class="bg-anim">
@@ -293,7 +288,7 @@
                         <div class="custom-control custom-switch search-pro-mode-switch"
                              data-trigger="hover" data-toggle="popover" data-placement="top" data-html="true"
                              data-content="${languageResource.get("searchProModeDescription")}">
-                            <input type="checkbox" class="custom-control-input" checked id="proModeSwitch">
+                            <input type="checkbox" class="custom-control-input" id="proModeSwitch">
                             <label class="font-weight-bold font-italic custom-control-label flexed align-items-center"
                                    for="proModeSwitch">
                                 Pro
@@ -341,7 +336,7 @@
                                 <!-- hidden input for layered search -->
                                 <input type="hidden" class="submit-layered-search-input" value="false"/>
 
-                                <div class="option" data-type="radio">
+                                <div style="display: none;" class="option" data-type="radio">
                                     <div class="form-check form-check-inline" data-trigger="hover"
                                          data-toggle="popover" data-placement="top" data-html="true"
                                          data-content="${languageResource.get("fulltextSearch")}">
@@ -351,7 +346,7 @@
                                         <label class="form-check-label color-prime small-font"
                                                for="inlineRadio1">Fulltext</label>
                                     </div>
-                                    <div class="form-check form-check-inline" data-trigger="hover"
+                                    <div  class="form-check form-check-inline" data-trigger="hover"
                                          data-toggle="popover" data-placement="top" data-html="true"
                                          data-content="${languageResource.get("nerSearch")}">
                                         <input class="form-check-input" type="radio" disabled
@@ -367,14 +362,14 @@
                                     <input type="checkbox" data-id="EMBEDDINGS"/>
                                 </div>
 
-                                <div class="option" data-trigger="hover"
+                                <div style="display: none;" class="option" data-trigger="hover"
                                      data-toggle="popover" data-placement="top" data-html="true"
                                      data-content="${languageResource.get("kwicWarning")}">
                                     <label class="mb-0 w-100 color-dark small-font">KWIC</label>
                                     <input type="checkbox" data-id="KWIC"/>
                                 </div>
 
-                                <div class="option w-auto" data-trigger="hover"
+                                <div class="option" data-trigger="hover"
                                      data-toggle="popover" data-placement="top" data-html="true"
                                      data-content="${languageResource.get("enrichOption")}">
                                     <#--<#assign enrichDisabled = 'checked'>

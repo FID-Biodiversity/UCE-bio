@@ -2,15 +2,10 @@
 <html lang="en">
 <head>
     <link rel="stylesheet"
-          href="https://cdn.jsdelivr.net/npm/bootstrap@4.3.1/dist/css/bootstrap.min.css"
-          integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T"
-          crossorigin="anonymous">
-    <link
-            href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"
+          href="css/bootstrap.min.css">
+    <link href="css/animate.min.css"
             rel="stylesheet">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
-          crossorigin=""/>
+    <link rel="stylesheet" href="css/leaflet.css">
     <style>
         <#include "*/css/site.css">
     </style>
@@ -29,30 +24,21 @@
     <style>
         <#include "*/css/bg-anim.css">
     </style>
-    <script src="https://kit.fontawesome.com/b0888ca2eb.js"
-            crossorigin="anonymous"></script>
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
-            crossorigin=""></script>
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script
-            src="https://cdn.jsdelivr.net/npm/popper.js@1.14.7/dist/umd/popper.min.js"
-            integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1"
-            crossorigin="anonymous"></script>
-    <script
-            src="https://cdn.jsdelivr.net/npm/bootstrap@4.3.1/dist/js/bootstrap.min.js"
-            integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM"
-            crossorigin="anonymous"></script>
+    <link href="fontawesome-free-7.1.0-web/css/all.css" rel="stylesheet">
+    <script src="js/external-js/leaflet.js"></script>
+    <script src="js/external-js/jquery-3.6.0.min.js"></script>
+    <script src="js/external-js/popper.min.js"></script>
+    <script src="js/external-js/bootstrap.min.js"></script>
+    <!-- LOCALSCRIPT -->
     <script type="importmap">
         {
           "imports": {
-            "three": "https://unpkg.com/three@v0.161.0/build/three.module.js",
-            "three/addons/": "https://unpkg.com/three@v0.161.0/examples/jsm/"
+            "three": "js/external-js/three.module.js",
+            "three/addons/": "js/external-js/examples/jsm/"
           }
         }
     </script>
-
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="js/external-js/marked.min.js"></script>
     <script src="js/utils.js"></script>
     <script src="js/visualization/cdns/chartjs-449.js"></script>
     <script src="js/visualization/cdns/echarts-560.js"></script>
@@ -61,7 +47,8 @@
     <script type="module" src="js/md-block.js"></script>
 
     <!-- for rendering markdown to HTML, use the markdown-viewer box -->
-    <script src="https://cdn.jsdelivr.net/npm/markdown-it/dist/markdown-it.min.js"></script>
+    <!-- LOCALSCRIPT -->
+    <script src="js/external-js/markdown-it.min.js"></script>
     <script>
         // Using https://github.com/markdown-it/markdown-it
         class MarkdownViewer extends HTMLElement {
