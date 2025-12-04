@@ -28,3 +28,5 @@ ENTRYPOINT ["sh", "start_db.sh"]
 #               cp -r /mnt/UCE/ontologies/test_data/ /fuseki/databases/
 
 #               Danach command ./entrypoint.sh --update --tdb2 --port 5430 --loc /fuseki/databases/test_data/biofid-search /biofid-search
+
+#docker build -t kube-uce-web -f uce.portal/uce.web/Dockerfile_kube_secure . && docker tag kube-uce-web harbor.ub.uni-frankfurt.de/fid/biofid-portal:kube-uce-webv11 && docker push harbor.ub.uni-frankfurt.de/fid/biofid-portal:kube-uce-webv11

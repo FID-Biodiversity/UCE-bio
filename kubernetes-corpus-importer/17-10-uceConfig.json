@@ -18,7 +18,7 @@
             "website": "https://www.texttechnologylab.org/team/alexander-mehler/",
             "address": "Robert-Mayer-Straße 10<br/>60325 Frankfurt am Main"
           },
-          "image": "FILE::https://www.texttechnologylab.org/wp-content/uploads/2024/01/71.1-d.jpg"
+          "image": "LOCALFILE::/img/Mehler_Alexander.jpeg"
         },
         {
           "name": "Kevin Bönisch",
@@ -30,7 +30,7 @@
             "website": "https://www.texttechnologylab.org/team/kevin-boenisch/",
             "address": "Robert-Mayer-Straße 10<br/>60325 Frankfurt am Main"
           },
-          "image": "FILE::https://www.texttechnologylab.org/wp-content/uploads/2024/01/Boenisch.png"
+          "image": "LOCALFILE::/img/Boenisch_Kevin.png"
         },
         {
           "name": "Manuel Schaaf",
@@ -42,7 +42,7 @@
             "website": "https://www.texttechnologylab.org/team/manuel-schaaf/",
             "address": "Robert-Mayer-Straße 10<br/>60325 Frankfurt am Main"
           },
-          "image": "FILE::https://www.texttechnologylab.org/wp-content/uploads/2023/06/stoeckel.jpg"
+          "image": "LOCALFILE::/img/Schaaf_Manuel.jpeg"
         },
         {
           "name": "Dr. Gerwin Kasperek",
@@ -54,7 +54,7 @@
             "website": "https://www.biofid.de/de/team/",
             "address": ""
           },
-          "image": "FILE::https://www.biofid.de/media/images/profile_kasperek.min-100x120.jpg"
+          "image": "LOCALFILE::/img/Kasperek_Gerwin.jpeg"
         },
                 {
           "name": "Katrin Peikert",

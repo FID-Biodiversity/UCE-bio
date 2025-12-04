@@ -228,8 +228,8 @@
     "en-EN": "Searches texts within a semantic vector space based on a given search term, without relying on the direct use of lexical units from the full text."
   },
   "enrichOption": {
-    "de-DE": "Nur zugänglich, wenn eine aktive Graph-Datenbank mit hinterlegter Ontologie existiert. Durchsucht den Such-Query nach potentiellen Erweiterungen durch eben jene Ontologie der Datenbank.",
-    "en-EN": "Only accessible if an active graph database with a stored ontology exists. Searches the search query for potential extensions using the same ontology of the database."
+    "de-DE": "Nutzbar in allen Suchmodi. Nur zugänglich, wenn eine aktive Graph-Datenbank mit hinterlegter Ontologie existiert. Durchsucht den Such-Query nach potentiellen Erweiterungen durch eben jene Ontologie der Datenbank.",
+    "en-EN": "Usable in all Search modes. Only accessible if an active graph database with a stored ontology exists. Searches the search query for potential extensions using the same ontology of the database."
   },
   "enrichmentCutoffTitle": {
     "de-DE": "Diese Enrichment-Suche wurde abgeschnitten.",

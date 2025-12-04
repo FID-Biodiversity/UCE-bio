@@ -17,5 +17,5 @@ CREATE TABLE IF NOT EXISTS public.documentchunkembeddings
 TABLESPACE pg_default;
 
 ALTER TABLE IF EXISTS public.documentchunkembeddings
-    OWNER to postgres;
-    /*OWNER to uce_test_user;*/
+    /*OWNER to postgres;*/
+    OWNER to uce_prod_user;
