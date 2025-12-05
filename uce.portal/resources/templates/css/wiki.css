@@ -164,6 +164,10 @@
 
 .wiki-page {
 }
+.wiki-page i.fas {
+  font-family: 'Font Awesome\ 7 Free' !important;
+  font-style: none
+}
 
 .wiki-page * {
     font-family: "Times New Roman", serif;
