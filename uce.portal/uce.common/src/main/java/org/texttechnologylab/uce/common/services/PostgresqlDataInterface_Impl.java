@@ -3,19 +3,27 @@ package org.texttechnologylab.uce.common.services;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.hibernate.*;
 import org.hibernate.criterion.Projections;
 import org.hibernate.criterion.Restrictions;
+import org.hibernate.query.NativeQuery;
 import org.hibernate.type.LongType;
 import org.hibernate.type.StandardBasicTypes;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.context.annotation.Lazy;
+import org.texttechnologylab.models.authentication.DocumentPermission;
 import org.texttechnologylab.uce.common.annotations.Searchable;
 import org.texttechnologylab.uce.common.config.HibernateConf;
 import org.texttechnologylab.uce.common.exceptions.DatabaseOperationException;
+import org.texttechnologylab.uce.common.exceptions.DocumentAccessDeniedException;
 import org.texttechnologylab.uce.common.exceptions.ExceptionUtils;
 import org.texttechnologylab.uce.common.models.Linkable;
 import org.texttechnologylab.uce.common.models.ModelBase;
 import org.texttechnologylab.uce.common.models.UIMAAnnotation;
+import org.texttechnologylab.uce.common.models.authentication.UceUser;
 import org.texttechnologylab.uce.common.models.biofid.BiofidTaxon;
 import org.texttechnologylab.uce.common.models.biofid.GazetteerTaxon;
 import org.texttechnologylab.uce.common.models.biofid.GnFinderTaxon;
@@ -34,6 +42,7 @@ import org.texttechnologylab.uce.common.models.topic.TopicValueBase;
 import org.texttechnologylab.uce.common.models.topic.TopicWord;
 import org.texttechnologylab.uce.common.models.topic.UnifiedTopic;
 import org.texttechnologylab.uce.common.models.util.HealthStatus;
+import org.texttechnologylab.uce.common.security.DocumentAccessManager;
 import org.texttechnologylab.uce.common.utils.ReflectionUtils;
 import org.texttechnologylab.uce.common.utils.StringUtils;
 import org.texttechnologylab.uce.common.utils.SystemStatus;
@@ -47,20 +56,22 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.*;
-import java.util.function.Function;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 @Service
-public class PostgresqlDataInterface_Impl implements DataInterface {
+public final class PostgresqlDataInterface_Impl implements DataInterface {
+    private static final Logger logger = LogManager.getLogger(PostgresqlDataInterface_Impl.class);
 
     private final SessionFactory sessionFactory;
+
+    @Autowired
+    @Lazy
+    private DocumentAccessManager accessManager;
 
     private final Gson gson = new GsonBuilder()
             .registerTypeAdapter(UCEMetadataValueType.class, new UCEMetadataValueTypeOrdinalAdapter())
             .create();
-
-    private Session getCurrentSession() {
-        return sessionFactory.openSession();
-    }
 
     public PostgresqlDataInterface_Impl() {
         sessionFactory = HibernateConf.buildSessionFactory();
@@ -77,7 +88,152 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
         }
     }
 
-    public void executeSqlWithoutReturn(String sql) throws DatabaseOperationException {
+    public DocumentAccessManager getAccessManager() {
+        return accessManager;
+    }
+
+    /*
+     * @author: Dawit Terefe
+     * 
+     * Checks if the given principal has at least the given minimum level of access
+     * to the specified document.
+     * 
+     * @param principal The username of the principal whose access is to be checked.
+     * @param documentId The ID of the document to check access for.
+     * @param minLevel The minimum required access level.
+     * 
+     * @return true if the principal has at least the specified access level to the document, false otherwise.
+     */
+    public boolean hasDocumentAccess(String principal,
+                                    long documentId,
+                                    DocumentPermission.DOCUMENT_PERMISSION_LEVEL minLevel) throws DatabaseOperationException, DocumentAccessDeniedException {
+        return executeOperationSafely(session -> {
+            String sql = """
+                SELECT EXISTS (
+                    SELECT 1
+                    FROM permitted_documents(:principal, :minLevel) AS pd
+                    WHERE pd.id = :documentId
+                )
+                """;
+            var query = session.createNativeQuery(sql);
+            query.setParameter("principal", principal);
+            query.setParameter("minLevel", minLevel.ordinal());
+            query.setParameter("documentId", documentId);
+            Boolean result = (Boolean) query.getSingleResult();
+            return Boolean.TRUE.equals(result);
+        });
+    }
+
+    /* 
+     * @author: Dawit Terefe
+     * 
+     * Checks access for multiple documents at once.
+     * 
+     * @param principal The username of the principal whose access is to be checked.
+     * @param documentIds A collection of document IDs to check access for.
+     * @param minLevel The minimum required access level.
+     * 
+     * @return A map where the keys are document IDs and the values are booleans indicating
+     * 
+     */
+    public Map<Long, Boolean> hasDocumentAccess(String principal,
+                                                Collection<Long> documentIds,
+                                                DocumentPermission.DOCUMENT_PERMISSION_LEVEL minLevel) throws DatabaseOperationException, DocumentAccessDeniedException {
+        if (documentIds == null || documentIds.isEmpty()) return Map.of();
+
+        return executeOperationSafely(session -> {
+            String sql = """
+                SELECT pd.id
+                FROM permitted_documents(:principal, :minLevel) AS pd
+                WHERE pd.id = ANY(:documentIds)
+                """;
+            var query = session.createNativeQuery(sql, Long.class);
+            query.setParameter("principal", principal);
+            query.setParameter("minLevel", minLevel.ordinal());
+            query.setParameter("documentIds", documentIds);
+
+            List<Long> allowedIds = query.getResultList();
+
+            Map<Long, Boolean> map = new HashMap<>();
+            for (long id : documentIds) {
+                map.put(id, false);
+            }
+            for (long id : allowedIds) {
+                map.put(id, true);
+            }
+            return map;
+        });
+    }
+
+
+    public void calculateEffectivePermissions(String username, Set<String> groups)
+            throws DatabaseOperationException, DocumentAccessDeniedException {
+
+        executeOperationSafely(session -> {
+            logger.info("calculateEffectivePermissions invoked for username={} with groups size={} groups={}",
+                    username, groups == null ? 0 : groups.size(), groups);
+
+            boolean hasGroups = groups != null && !groups.isEmpty();
+
+            StringBuilder sqlBuilder = new StringBuilder("""
+                WITH all_permissions AS (
+                    SELECT dp.document_id, dp.level
+                    FROM documentpermissions dp
+                    WHERE dp.type = 1
+                    AND dp.name = :username
+            """);
+
+            if (hasGroups) {
+                String groupParams = IntStream.range(0, groups.size())
+                        .mapToObj(i -> ":group" + i)
+                        .collect(Collectors.joining(", "));
+
+                sqlBuilder.append("""
+                    UNION ALL
+                    SELECT dp.document_id, dp.level
+                    FROM documentpermissions dp
+                    WHERE dp.type = 0
+                    AND dp.name IN (""")
+                        .append(groupParams)
+                        .append(")\n");
+            }
+
+            sqlBuilder.append("""
+                ),
+                ranked AS (
+                    SELECT document_id, MAX(level) AS max_level
+                    FROM all_permissions
+                    GROUP BY document_id
+                )
+                INSERT INTO documentpermissions (document_id, name, type, level, createdat, updatedat, grantedby, updatedby)
+                SELECT r.document_id, :username, 2, r.max_level, now(), now(), :username, :username
+                FROM ranked r
+                ON CONFLICT (document_id, name, type)
+                DO UPDATE SET level = EXCLUDED.level,
+                            updatedat = now(),
+                            updatedby = :username
+            """); // kein ";" nötig
+
+            String sql = sqlBuilder.toString();
+
+            NativeQuery<?> query = session.createNativeQuery(sql);
+            query.setParameter("username", username);
+
+            if (hasGroups) {
+                int i = 0;
+                for (String g : groups) {
+                    query.setParameter("group" + i++, g);
+                }
+            }
+
+            int updated = query.executeUpdate();
+            logger.info("calculateEffectivePermissions finished for username={} rows_affected={}", username, updated);
+            return null;
+        });
+    }
+
+
+    public void executeSqlWithoutReturn(String sql) throws DatabaseOperationException, DocumentAccessDeniedException {
         executeOperationSafely(session -> {
             session.doWork(connection -> {
                 try (var stmt = connection.prepareStatement(sql)) {
@@ -88,18 +244,26 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
         });
     }
 
-    public List executeSqlWithReturn(String sql) throws DatabaseOperationException {
+    public List<?> executeSqlWithReturn(String sql) throws DatabaseOperationException, DocumentAccessDeniedException {
         return executeOperationSafely(session -> session.createNativeQuery(sql).getResultList());
     }
 
-    public ArrayList<AnnotationSearchResult> getAnnotationsOfCorpus(long corpusId, int skip, int take) throws DatabaseOperationException {
+    @Override
+    public ArrayList<AnnotationSearchResult> getAnnotationsOfCorpus(long corpusId, int skip, int take) throws DatabaseOperationException, DocumentAccessDeniedException {
         return executeOperationSafely((session) -> session.doReturningWork((connection) -> {
 
             DocumentSearchResult search = null;
-            try (var storedProcedure = connection.prepareCall("{call get_corpus_annotations" + "(?, ?, ?)}")) {
+            try (var storedProcedure = connection.prepareCall("{call get_corpus_annotations" + "(?, ?, ?, ?, ?)}")) {
                 storedProcedure.setInt(1, (int) corpusId);
                 storedProcedure.setInt(2, take);
                 storedProcedure.setInt(3, skip);
+
+                var ctx = accessManager.current();
+                // Passing user for authentication or default admin user if authentication is not used
+                storedProcedure.setString(4, ctx.principal());
+
+                // Document access level
+                storedProcedure.setInt(5, DocumentPermission.DOCUMENT_PERMISSION_LEVEL.READ.ordinal());
 
                 var result = storedProcedure.executeQuery();
                 var annotations = new ArrayList<AnnotationSearchResult>();
@@ -124,7 +288,7 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
                                                        long corpusId,
                                                        int skip,
                                                        int take,
-                                                       String fromAnnotationTypeTable) throws DatabaseOperationException {
+                                                       String fromAnnotationTypeTable) throws DatabaseOperationException, DocumentAccessDeniedException {
         return executeOperationSafely((session) -> session.doReturningWork((connection) -> {
             try (var storedProcedure = connection.prepareCall("{call uce_query_geoname_timeline_links" + "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)}")) {
                 storedProcedure.setDouble(1, minLng);
@@ -167,7 +331,7 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
                                                                       double gridSize,
                                                                       java.sql.Date fromDate,
                                                                       java.sql.Date toDate,
-                                                                      long corpusId) throws DatabaseOperationException {
+                                                                      long corpusId) throws DatabaseOperationException, DocumentAccessDeniedException {
         return executeOperationSafely((session) -> session.doReturningWork((connection) -> {
             try (var storedProcedure = connection.prepareCall("{call uce_query_clustered_geoname_timeline_cache" + "(?, ?, ?, ?, ?, ?, ?, ?)}")) {
                 storedProcedure.setDouble(1, minLng);
@@ -193,7 +357,8 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
         }));
     }
 
-    public List<String> getIdentifiableTaxonsByValue(String token) throws DatabaseOperationException {
+    @Override
+    public List<String> getIdentifiableTaxonsByValue(String token) throws DatabaseOperationException, DocumentAccessDeniedException {
         return executeOperationSafely((session) -> {
             String sql = "SELECT DISTINCT biofidurl FROM biofidtaxon WHERE primaryname ILIKE :token LIMIT 100";
 
@@ -208,7 +373,8 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
         });
     }
 
-    public int countDocumentsInCorpus(long id) throws DatabaseOperationException {
+    @Override
+    public int countDocumentsInCorpus(long id) throws DatabaseOperationException, DocumentAccessDeniedException {
         return executeOperationSafely((session) -> {
             var criteria = session.createCriteria(Document.class);
             criteria.add(Restrictions.eq("corpusId", id));
@@ -218,7 +384,7 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
     }
 
     @SuppressWarnings("deprecation")
-    public int countPagesInCorpus(long corpusId) throws DatabaseOperationException {
+    public int countPagesInCorpus(long corpusId) throws DatabaseOperationException, DocumentAccessDeniedException {
         return executeOperationSafely((session) -> {
             var criteria = session.createCriteria(Page.class, "page");
             criteria.createAlias("page.document", "document");
@@ -228,7 +394,8 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
         });
     }
 
-    public boolean documentExists(long corpusId, String documentId) throws DatabaseOperationException {
+    @Override
+    public boolean documentExists(long corpusId, String documentId) throws DatabaseOperationException, DocumentAccessDeniedException {
         return executeOperationSafely((session) -> {
             var criteriaBuilder = session.getCriteriaBuilder();
             var criteriaQuery = criteriaBuilder.createQuery(Long.class);
@@ -243,7 +410,8 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
         });
     }
 
-    public CorpusTsnePlot getCorpusTsnePlotByCorpusId(long corpusId) throws DatabaseOperationException {
+    @Override
+    public CorpusTsnePlot getCorpusTsnePlotByCorpusId(long corpusId) throws DatabaseOperationException, DocumentAccessDeniedException {
         return executeOperationSafely((session) -> {
             var cb = session.getCriteriaBuilder();
             var query = cb.createQuery(CorpusTsnePlot.class);
@@ -254,7 +422,8 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
         });
     }
 
-    public List<UCEMetadataFilter> getUCEMetadataFiltersByCorpusId(long corpusId) throws DatabaseOperationException {
+    @Override
+    public List<UCEMetadataFilter> getUCEMetadataFiltersByCorpusId(long corpusId) throws DatabaseOperationException, DocumentAccessDeniedException {
         return executeOperationSafely((session) -> {
             Criteria criteria = session.createCriteria(UCEMetadataFilter.class);
             criteria.add(Restrictions.eq("corpusId", corpusId));
@@ -262,7 +431,11 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
         });
     }
 
-    public List<UCEMetadata> getUCEMetadataByDocumentId(long documentId) throws DatabaseOperationException {
+    @Override
+    public List<UCEMetadata> getUCEMetadataByDocumentId(long documentId) throws DatabaseOperationException, DocumentAccessDeniedException {
+
+        accessManager.checkAccess(documentId, DocumentPermission.DOCUMENT_PERMISSION_LEVEL.READ);
+
         return executeOperationSafely((session) -> {
             Criteria criteria = session.createCriteria(UCEMetadata.class);
             criteria.add(Restrictions.eq("documentId", documentId));
@@ -275,15 +448,50 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
         });
     }
 
-    public List<Document> getDocumentsByCorpusId(long corpusId, int skip, int take) throws DatabaseOperationException {
+    @Override
+    public List<Document> getDocumentsByCorpusId(long corpusId, int skip, int take) throws DatabaseOperationException, DocumentAccessDeniedException {
         return executeOperationSafely((session) -> {
-            // TODO: Hardcoded sql, but another instance where hibernate is fucking unusable. This SQL in HQL or whatever
+            // Hardcoded sql, but another instance where hibernate is fucking unusable. This SQL in HQL or whatever
             // crooked syntax is a million times slower. I'll just leave the raw sql here then.
-            var sql = "SELECT * FROM document WHERE corpusid = :corpusId ORDER BY id LIMIT :take OFFSET :skip";
+
+            // var sql = "SELECT * FROM :documentTable WHERE corpusid = :corpusId ORDER BY id LIMIT :take OFFSET :skip";
+
+            // if (user != null) {
+            //     // only show documents where the effective permissions (2) for this user are at least READ (1)
+            //     // or allow access if there are no permissions set at all
+            //     sql = """
+            //         SELECT * FROM document doc
+            //         LEFT JOIN documentpermissions dp ON dp.document_id = doc.id
+            //         WHERE doc.corpusid = :corpusId
+            //             AND (
+            //                 dp.document_id IS NULL
+            //                 OR (dp.type = 2 AND dp.name = :user AND dp.level >= 1)
+            //             )
+            //         ORDER BY doc.id
+            //         LIMIT :take
+            //         OFFSET :skip
+            //         """;
+            // }
+
+            var ctx = accessManager.current(); // falls back to admin when auth is off
+            var sql = """
+                SELECT *
+                FROM permitted_documents(:principal, :minLevel) doc
+                WHERE doc.corpusid = :corpusId
+                ORDER BY doc.id
+                LIMIT :take OFFSET :skip
+                """;
+
+
             var query = session.createNativeQuery(sql, Document.class)
+                    .setParameter("principal", ctx.principal())
+                    .setParameter("minLevel", DocumentPermission.DOCUMENT_PERMISSION_LEVEL.READ.ordinal())
                     .setParameter("corpusId", corpusId)
                     .setParameter("take", take)
                     .setParameter("skip", skip);
+            // if (user != null) {
+            //     query.setParameter("user", user.getUsername());
+            // }
 
             var documents = query.getResultList();
 
@@ -298,7 +506,8 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
         });
     }
 
-    public List<DocumentLink> getManyDocumentLinksOfDocument(long id) throws DatabaseOperationException {
+    @Override
+    public List<DocumentLink> getManyDocumentLinksOfDocument(long id) throws DatabaseOperationException, DocumentAccessDeniedException {
         return executeOperationSafely((session) -> {
             var criteria = session.createCriteria(DocumentLink.class);
             criteria.add(Restrictions.or(
@@ -309,7 +518,8 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
         });
     }
 
-    public List<DocumentLink> getManyDocumentLinksByDocumentId(String documentId, long corpusId) throws DatabaseOperationException {
+    @Override
+    public List<DocumentLink> getManyDocumentLinksByDocumentId(String documentId, long corpusId) throws DatabaseOperationException, DocumentAccessDeniedException {
         return executeOperationSafely((session) -> {
             var criteria = session.createCriteria(DocumentLink.class);
             criteria.add(Restrictions.eq("corpusId", corpusId));
@@ -321,7 +531,8 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
         });
     }
 
-    public List<Document> getNonePostprocessedDocumentsByCorpusId(long corpusId) throws DatabaseOperationException {
+    @Override
+    public List<Document> getNonePostprocessedDocumentsByCorpusId(long corpusId) throws DatabaseOperationException, DocumentAccessDeniedException {
         return executeOperationSafely((session) -> {
             var criteria = session.createCriteria(Document.class);
             criteria.add(Restrictions.eq("corpusId", corpusId));
@@ -330,7 +541,7 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
         });
     }
 
-    public List<Link> getAllLinksOfLinkable(long id, Class<? extends Linkable> linkableType, List<Class<? extends ModelBase>> possibleLinkTypes) throws DatabaseOperationException {
+    public List<Link> getAllLinksOfLinkable(long id, Class<? extends Linkable> linkableType, List<Class<? extends ModelBase>> possibleLinkTypes) throws DatabaseOperationException, DocumentAccessDeniedException {
         // A linkable object can have multiple links that reference different tables (document, namedentity, token...)
         var links = new ArrayList<Link>();
 
@@ -340,7 +551,7 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
         return links;
     }
 
-    public List<Link> getLinksOfLinkableByType(long id, Class<? extends Linkable> linkableType, Class<? extends ModelBase> type) throws DatabaseOperationException {
+    public List<Link> getLinksOfLinkableByType(long id, Class<? extends Linkable> linkableType, Class<? extends ModelBase> type) throws DatabaseOperationException, DocumentAccessDeniedException {
         return executeOperationSafely((session) -> {
             var criteria = session.createCriteria(type);
             criteria.add(Restrictions.or(
@@ -357,7 +568,7 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
         });
     }
 
-    public Linkable getLinkableById(long id, Class<? extends Linkable> clazz) throws DatabaseOperationException {
+    public Linkable getLinkableById(long id, Class<? extends Linkable> clazz) throws DatabaseOperationException, DocumentAccessDeniedException {
         return executeOperationSafely(session -> {
             var linkable = session.get(clazz, id);
             if (linkable instanceof Document doc) Hibernate.initialize(doc.getPages());
@@ -367,20 +578,20 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
         });
     }
 
-    public Linkable getLinkable(long id, Class<? extends Linkable> clazz) throws DatabaseOperationException {
+    public Linkable getLinkable(long id, Class<? extends Linkable> clazz) throws DatabaseOperationException, DocumentAccessDeniedException {
         var linkable = getLinkableById(id, clazz);
         if(linkable == null) return null;
         linkable.initLinkableViewModel(this);
         return linkable;
     }
 
-    public Linkable getLinkable(long id, String className) throws ClassNotFoundException, DatabaseOperationException {
+    public Linkable getLinkable(long id, String className) throws ClassNotFoundException, DatabaseOperationException, DocumentAccessDeniedException {
         var clazz = ReflectionUtils.getClassFromClassName(className, Linkable.class);
         return getLinkable(id, clazz);
     }
 
     @SuppressWarnings("unchecked")
-    public List<UIMAAnnotation> getManyUIMAAnnotationsByCoveredText(String coveredText, Class<? extends UIMAAnnotation> clazz, int skip, int take) throws DatabaseOperationException {
+    public List<UIMAAnnotation> getManyUIMAAnnotationsByCoveredText(String coveredText, Class<? extends UIMAAnnotation> clazz, int skip, int take) throws DatabaseOperationException, DocumentAccessDeniedException {
         return (List<UIMAAnnotation>) executeOperationSafely((session -> {
             String sql = String.format(
                     "SELECT * FROM %s WHERE coveredtext = :coveredText ORDER BY id LIMIT :take OFFSET :skip",
@@ -395,13 +606,15 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
         }));
     }
 
-    public Corpus getCorpusById(long id) throws DatabaseOperationException {
+    @Override
+    public Corpus getCorpusById(long id) throws DatabaseOperationException, DocumentAccessDeniedException {
         return executeOperationSafely((session) -> {
             return session.get(Corpus.class, id);
         });
     }
 
-    public Corpus getCorpusByName(String name) throws DatabaseOperationException {
+    @Override
+    public Corpus getCorpusByName(String name) throws DatabaseOperationException, DocumentAccessDeniedException {
         return executeOperationSafely((session) -> {
             var criteriaBuilder = session.getCriteriaBuilder();
             var criteriaQuery = criteriaBuilder.createQuery(Corpus.class);
@@ -412,7 +625,8 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
         });
     }
 
-    public List<Corpus> getAllCorpora() throws DatabaseOperationException {
+    @Override
+    public List<Corpus> getAllCorpora() throws DatabaseOperationException, DocumentAccessDeniedException {
         return executeOperationSafely((session) -> {
             var criteriaQuery = session.getCriteriaBuilder().createQuery(Corpus.class);
             criteriaQuery.from(Corpus.class);
@@ -424,7 +638,11 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
         });
     }
 
-    public List<GlobeTaxon> getGlobeDataForDocument(long documentId) throws DatabaseOperationException {
+    @Override
+    public List<GlobeTaxon> getGlobeDataForDocument(long documentId) throws DatabaseOperationException, DocumentAccessDeniedException {
+
+        accessManager.checkAccess(documentId, DocumentPermission.DOCUMENT_PERMISSION_LEVEL.READ);
+
         return executeOperationSafely((session) -> {
             var doc = session.get(Document.class, documentId);
             Hibernate.initialize(doc.getPages());
@@ -496,7 +714,10 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
         });
     }
 
-    public List<Document> getAllCompleteDocuments() throws DatabaseOperationException {
+    public List<Document> getAllCompleteDocuments() throws DatabaseOperationException, DocumentAccessDeniedException {
+
+        // TODO Check permission here by user role. 
+
         return executeOperationSafely((session) -> {
             var criteriaQuery = session.getCriteriaBuilder().createQuery(Document.class);
             criteriaQuery.from(Document.class);
@@ -523,11 +744,15 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
         }
     }
 
-    public List<Document> getManyDocumentsByIds(List<Integer> documentIds) throws DatabaseOperationException {
+    @Override
+    public List<Document> getManyDocumentsByIds(List<Long> documentIds) throws DatabaseOperationException, DocumentAccessDeniedException {
         return getManyDocumentsByIds(documentIds, null);
     }
 
-    public List<Document> getManyDocumentsByIds(List<Integer> documentIds, Set<String> hibernateInit) throws DatabaseOperationException {
+    public List<Document> getManyDocumentsByIds(List<Long> documentIds, Set<String> hibernateInit) throws DatabaseOperationException, DocumentAccessDeniedException {
+
+        accessManager.checkAccess(documentIds, DocumentPermission.DOCUMENT_PERMISSION_LEVEL.READ);
+
         return executeOperationSafely((session) -> {
             var builder = session.getCriteriaBuilder();
             var query = builder.createQuery(Document.class);
@@ -558,10 +783,11 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
         });
     }
 
+    @Override
     public List<LexiconEntry> getManyLexiconEntries(int skip, int take, List<String> alphabet,
                                                     List<String> annotationFilters, String sortColumn,
                                                     String sortOrder, String searchInput)
-            throws DatabaseOperationException {
+            throws DatabaseOperationException, DocumentAccessDeniedException {
         return executeOperationSafely((session) -> {
             var builder = session.getCriteriaBuilder();
             var criteriaQuery = builder.createQuery(LexiconEntry.class);
@@ -617,7 +843,7 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
         });
     }
 
-    public int callLexiconRefresh(ArrayList<String> tables, boolean force) throws DatabaseOperationException {
+    public int callLexiconRefresh(ArrayList<String> tables, boolean force) throws DatabaseOperationException, DocumentAccessDeniedException {
         return executeOperationSafely((session) -> session.doReturningWork((connection) -> {
             var insertedLex = 0;
             try (var storedProcedure = connection.prepareCall("{call refresh_lexicon" + "(?, ?)}")) {
@@ -632,7 +858,7 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
         }));
     }
 
-    public int callLogicalLinksRefresh() throws DatabaseOperationException {
+    public int callLogicalLinksRefresh() throws DatabaseOperationException, DocumentAccessDeniedException {
         return executeOperationSafely((session) -> session.doReturningWork((connection) -> {
             var insertedLex = 0;
             try (var storedProcedure = connection.prepareCall("{call refresh_links()}")) {
@@ -645,7 +871,7 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
         }));
     }
 
-    public int callGeonameLocationRefresh() throws DatabaseOperationException {
+    public int callGeonameLocationRefresh() throws DatabaseOperationException, DocumentAccessDeniedException {
         return executeOperationSafely((session) -> session.doReturningWork((connection) -> {
             var insertedLex = 0;
             try (var storedProcedure = connection.prepareCall("{call update_geoname_locations()}")) {
@@ -669,11 +895,12 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
                                                                boolean countAll,
                                                                SearchOrder order,
                                                                OrderByColumn orderedByColumn,
-                                                               long corpusId) throws DatabaseOperationException {
+                                                               long corpusId
+                                                               ) throws DatabaseOperationException, DocumentAccessDeniedException {
         return executeOperationSafely((session) -> session.doReturningWork((connection) -> {
 
             DocumentSearchResult search = null;
-            try (var storedProcedure = connection.prepareCall("{call uce_semantic_role_search" + "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)}")) {
+            try (var storedProcedure = connection.prepareCall("{call uce_semantic_role_search" + "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)}")) {
                 storedProcedure.setInt(1, (int) corpusId);
                 storedProcedure.setArray(2, connection.createArrayOf("text", arg0.toArray()));
                 storedProcedure.setArray(3, connection.createArrayOf("text", arg1.toArray()));
@@ -686,14 +913,25 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
                 storedProcedure.setString(10, order.name());
                 storedProcedure.setString(11, orderedByColumn.name().toLowerCase());
 
+                
+                var ctx = accessManager.current();
+                // Passing user for authentication or default admin user if authentication is not used
+                storedProcedure.setString(12, ctx.principal());
+
+                // Document access level
+                storedProcedure.setInt(13, DocumentPermission.DOCUMENT_PERMISSION_LEVEL.READ.ordinal());
+
+
                 var result = storedProcedure.executeQuery();
                 while (result.next()) {
                     var documentCount = result.getInt("total_count_out");
-                    var documentIds = new ArrayList<Integer>();
+                    var documentIds = new ArrayList<Long>();
                     var documentIdsResult = result.getArray("document_ids");
                     if (documentIdsResult != null) {
                         var ids = (Integer[]) documentIdsResult.getArray();
-                        documentIds.addAll(Arrays.asList(ids));
+                        for (Integer id : ids) {
+                            documentIds.add(id.longValue());
+                        }
                     }
                     search = new DocumentSearchResult(documentCount, documentIds);
                     // Also parse the found entities and all outputs the query returns.
@@ -718,7 +956,7 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
                                                                    SearchOrder order,
                                                                    OrderByColumn orderedByColumn,
                                                                    long corpusId,
-                                                                   List<UCEMetadataFilterDto> filters) throws DatabaseOperationException {
+                                                                   List<UCEMetadataFilterDto> filters) throws DatabaseOperationException, DocumentAccessDeniedException {
         return executeOperationSafely((session) -> session.doReturningWork((connection) -> {
             HashMap<String, List<String>> tableSubstrings = new HashMap<>();
             tableSubstrings.put("cue", cue);
@@ -741,7 +979,7 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
             annoMap.put("scope", scopesByDocID);
             annoMap.put("xscope", xscopesByDocID);
 
-            TreeMap<String, Boolean> skipMap = new TreeMap<String, Boolean>();
+            TreeMap<String, Boolean> skipMap = new TreeMap<>();
             skipMap.put("cue", false);
             skipMap.put("event", false);
             skipMap.put("focus", false);
@@ -910,9 +1148,9 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
             if (docIds.isEmpty()) {
                 return search;
             } else {
-                var documentIds = new ArrayList<Integer>();
+                var documentIds = new ArrayList<Long>();
                 for (Long docId : docIds) {
-                    documentIds.add(docId.intValue()); // Convert Long to Integer
+                    documentIds.add(docId); // Convert Long to Integer TODO: Why?
                 }
                 search = new DocumentSearchResult(docCount, documentIds);
                 search.setFoundCues(cues);
@@ -975,7 +1213,7 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
                             foundSnippets.put(doc.getId(), new ArrayList<>());
                             foundSnippets.get(doc.getId()).add(pageSnippet);
                         }
-                    } catch (DatabaseOperationException e) {
+                    } catch (DatabaseOperationException | DocumentAccessDeniedException e) {
                         throw new RuntimeException(e);
                     }
 
@@ -987,6 +1225,7 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
         }));
     }
 
+    @Override
     public DocumentSearchResult defaultSearchForDocuments(int skip,
                                                           int take,
                                                           String ogSearchQuery,
@@ -999,12 +1238,13 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
                                                           List<UCEMetadataFilterDto> uceMetadataFilters,
                                                           boolean useTsVectorSearch,
                                                           String schema,
-                                                          String sourceTable) throws DatabaseOperationException {
+                                                          String sourceTable
+                                                          ) throws DatabaseOperationException, DocumentAccessDeniedException {
 
         return executeOperationSafely((session) -> session.doReturningWork((connection) -> {
             DocumentSearchResult search = null;
             try (var storedProcedure = connection.prepareCall("{call uce_search_layer_" + layer.name().toLowerCase() +
-                                                              "(?::bigint, ?::text[], ?::text, ?::integer, ?::integer, ?::boolean, ?::text, ?::text, ?::jsonb, ?::boolean, ?::text, ?::text)}")) {
+                                                              "(?::bigint, ?::text[], ?::text, ?::integer, ?::integer, ?::boolean, ?::text, ?::text, ?::jsonb, ?::boolean, ?::text, ?::text, ?::text, ?::integer)}")) {
                 storedProcedure.setInt(1, (int) corpusId);
                 storedProcedure.setArray(2, connection.createArrayOf("text", searchTokens.stream().map(this::escapeSql).toArray()));
                 storedProcedure.setString(3, ogSearchQuery);
@@ -1024,14 +1264,25 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
                 storedProcedure.setString(11, sourceTable);
                 storedProcedure.setString(12, schema);
 
+                var ctx = accessManager.current();
+                // Passing user for authentication or default admin user if authentication is not used
+                storedProcedure.setString(13, ctx.principal());
+
+                // Document access level
+                storedProcedure.setInt(14, DocumentPermission.DOCUMENT_PERMISSION_LEVEL.READ.ordinal());
+
                 var result = storedProcedure.executeQuery();
                 while (result.next()) {
                     var documentCount = result.getInt("total_count_out");
-                    var documentIds = new ArrayList<Integer>();
+                    var documentIds = new ArrayList<Long>();
                     var documentIdsResult = result.getArray("document_ids");
                     if (documentIdsResult != null) {
-                        var ids = (Integer[]) documentIdsResult.getArray();
-                        documentIds.addAll(Arrays.asList(ids));
+                        var ids = (Object[]) documentIdsResult.getArray();
+                        for (Object id : ids) {
+                            if (id != null) {
+                                documentIds.add(((Number) id).longValue());
+                            }
+                        }
                     }
                     search = new DocumentSearchResult(documentCount, documentIds);
                     // Also parse the found entities and all outputs the query returns.
@@ -1077,7 +1328,8 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
         }));
     }
 
-    public List<Document> getDocumentsByAnnotationCoveredText(String coveredText, int limit, String annotationName) throws DatabaseOperationException {
+    @Override
+    public List<Document> getDocumentsByAnnotationCoveredText(String coveredText, int limit, String annotationName) throws DatabaseOperationException, DocumentAccessDeniedException {
         return executeOperationSafely((session) -> {
             var criteriaBuilder = session.getCriteriaBuilder();
             var criteriaQuery = criteriaBuilder.createQuery(Document.class);
@@ -1104,7 +1356,8 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
         });
     }
 
-    public List<Lemma> getLemmasWithinBeginAndEndOfDocument(int begin, int end, long documentId) throws DatabaseOperationException {
+    @Override
+    public List<Lemma> getLemmasWithinBeginAndEndOfDocument(int begin, int end, long documentId) throws DatabaseOperationException, DocumentAccessDeniedException {
         return executeOperationSafely((session) -> {
             var cb = session.getCriteriaBuilder();
             var query = cb.createQuery(Lemma.class);
@@ -1126,7 +1379,8 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
         });
     }
 
-    public List<Lemma> getLemmasByValue(String covered, int limit, long documentId) throws DatabaseOperationException {
+    @Override
+    public List<Lemma> getLemmasByValue(String covered, int limit, long documentId) throws DatabaseOperationException, DocumentAccessDeniedException {
         return executeOperationSafely((session) -> {
             var cb = session.getCriteriaBuilder();
             var query = cb.createQuery(Lemma.class);
@@ -1151,7 +1405,8 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
         });
     }
 
-    public UCEImport getUceImportByImportId(String importId) throws DatabaseOperationException {
+    @Override
+    public UCEImport getUceImportByImportId(String importId) throws DatabaseOperationException, DocumentAccessDeniedException {
         return executeOperationSafely((session) -> {
             var criteria = session.createCriteria(UCEImport.class);
             criteria.add(Restrictions.eq("importId", importId));
@@ -1159,11 +1414,15 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
         });
     }
 
-    public Document getDocumentById(long id) throws DatabaseOperationException {
+    @Override
+    public Document getDocumentById(long id) throws DatabaseOperationException, DocumentAccessDeniedException {
         return getDocumentById(id, null);
     }
 
-    public Document getDocumentById(long id, Set<String> hibernateInit) throws DatabaseOperationException {
+    public Document getDocumentById(long id, Set<String> hibernateInit) throws DatabaseOperationException, DocumentAccessDeniedException {
+
+        accessManager.checkAccess(id, DocumentPermission.DOCUMENT_PERMISSION_LEVEL.READ);
+        
         return executeOperationSafely((session) -> {
             var doc = session.get(Document.class, id);
             Hibernate.initialize(doc.getPages());
@@ -1173,7 +1432,7 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
         });
     }
 
-    public List<Long> findDocumentIdsByMetadata(String key, String value, UCEMetadataValueType valueType) throws DatabaseOperationException {
+    public List<Long> findDocumentIdsByMetadata(String key, String value, UCEMetadataValueType valueType) throws DatabaseOperationException, DocumentAccessDeniedException {
         // Search for a document based on a metadata key/value pair
         return executeOperationSafely((session) -> {
             var cb = session.getCriteriaBuilder();
@@ -1193,8 +1452,10 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
         });
     }
 
-    public void deleteDocumentById(long id) throws DatabaseOperationException {
+    public void deleteDocumentById(long id) throws DatabaseOperationException, DocumentAccessDeniedException {
         // NOTE this only cleans up everything directly connected to the document
+
+        accessManager.checkAccess(id, DocumentPermission.DOCUMENT_PERMISSION_LEVEL.OWNER);
         // TODO also remove embeddings and other data
         executeOperationSafely((session) -> {
             var doc = session.get(Document.class, id);
@@ -1205,7 +1466,7 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
         });
     }
 
-    public List<Long> findDocumentIDsByTitle(String title, boolean like) throws DatabaseOperationException {
+    public List<Long> findDocumentIDsByTitle(String title, boolean like) throws DatabaseOperationException, DocumentAccessDeniedException {
         return executeOperationSafely((session) -> {
             var cb = session.getCriteriaBuilder();
             var cq = cb.createQuery(Long.class);
@@ -1226,7 +1487,7 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
         });
     }
 
-    public Document getFirstDocumentByTitle(String title, boolean like) throws DatabaseOperationException {
+    public Document getFirstDocumentByTitle(String title, boolean like) throws DatabaseOperationException, DocumentAccessDeniedException {
         return executeOperationSafely((session) -> {
             var cb = session.getCriteriaBuilder();
             var cq = cb.createQuery(Document.class);
@@ -1250,7 +1511,8 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
         });
     }
 
-    public Page getPageById(long id) throws DatabaseOperationException {
+    @Override
+    public Page getPageById(long id) throws DatabaseOperationException, DocumentAccessDeniedException {
         return executeOperationSafely((session) -> {
             var page = session.get(Page.class, id);
             Hibernate.initialize(page);
@@ -1258,7 +1520,8 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
         });
     }
 
-    public Page getPageByDocumentIdAndBeginEnd(long documentId, int begin, int end, boolean initialize) throws DatabaseOperationException {
+    @Override
+    public Page getPageByDocumentIdAndBeginEnd(long documentId, int begin, int end, boolean initialize) throws DatabaseOperationException, DocumentAccessDeniedException {
         return executeOperationSafely(session -> {
             var builder = session.getCriteriaBuilder();
             var criteria = builder.createQuery(Page.class);
@@ -1278,7 +1541,11 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
         });
     }
 
-    public Document getDocumentByCorpusAndDocumentId(long corpusId, String documentId) throws DatabaseOperationException {
+    @Override
+    public Document getDocumentByCorpusAndDocumentId(long corpusId, String documentId) throws DatabaseOperationException, NumberFormatException, DocumentAccessDeniedException {
+        
+        accessManager.checkAccess(Long.parseLong(documentId), DocumentPermission.DOCUMENT_PERMISSION_LEVEL.READ);
+
         return executeOperationSafely((session) -> {
             var cb = session.getCriteriaBuilder();
             var criteriaQuery = cb.createQuery(Document.class);
@@ -1301,15 +1568,17 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
         });
     }
 
-    public List<String> getDistinctTimesByCondition(String condition, long corpusId, int limit) throws DatabaseOperationException {
+    public List<String> getDistinctTimesByCondition(String condition, long corpusId, int limit) throws DatabaseOperationException, DocumentAccessDeniedException {
         return executeOperationSafely((session) -> {
             // Construct HQL dynamically (THIS IS UNSAFE BECAUSE OF THE CONDITION INSERTION)
             String hql = "SELECT DISTINCT t.coveredText " +
                          "FROM Time t " +
-                         "JOIN Document d ON t.documentId = d.id " +
+                         "JOIN permitted_documents(:principal, :minLevel) d ON t.documentId = d.id " +
                          "WHERE " + condition + " AND d.corpusId = :corpusId";
 
             var query = session.createQuery(hql, String.class);
+            query.setParameter("principal", accessManager.current().principal());
+            query.setParameter("minLevel", DocumentPermission.DOCUMENT_PERMISSION_LEVEL.READ.ordinal());
             query.setParameter("corpusId", corpusId);
             query.setMaxResults(limit);
 
@@ -1317,19 +1586,21 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
         });
     }
 
-    public List<String> getDistinctGeonamesNamesByFeatureCode(GeoNameFeatureClass featureClass, String featureCode, long corpusId, int limit) throws DatabaseOperationException {
+    public List<String> getDistinctGeonamesNamesByFeatureCode(GeoNameFeatureClass featureClass, String featureCode, long corpusId, int limit) throws DatabaseOperationException, DocumentAccessDeniedException {
         return executeOperationSafely((session) -> {
             // This with hibernate query builder doesn't work.
             String hql = """
                         SELECT DISTINCT g.name
                         FROM GeoName g
-                        JOIN Document d ON g.documentId = d.id
+                        JOIN permitted_documents(:principal, :minLevel) d ON g.documentId = d.id
                         WHERE g.featureClass = :featureClass
                           AND (:featureCode IS NULL OR g.featureCode = :featureCode)
                           AND d.corpusId = :corpusId
                     """;
 
             var query = session.createQuery(hql, String.class);
+            query.setParameter("principal", accessManager.current().principal());
+            query.setParameter("minLevel", DocumentPermission.DOCUMENT_PERMISSION_LEVEL.READ.ordinal());
             query.setParameter("featureClass", featureClass);
             query.setParameter("featureCode", featureCode.isEmpty() ? null : featureCode);
             query.setParameter("corpusId", corpusId);
@@ -1339,19 +1610,22 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
         });
     }
 
-    public List<String> getDistinctGeonamesNamesByRadius(double longitude, double latitude, double radius, long corpusId, int limit) throws DatabaseOperationException {
+    public List<String> getDistinctGeonamesNamesByRadius(double longitude, double latitude, double radius, long corpusId, int limit) throws DatabaseOperationException, DocumentAccessDeniedException {
+
         return executeOperationSafely((session) -> {
             // This with hibernate query builder doesn't work since we use Postgis location queries.
             String sql = """
                         SELECT DISTINCT g.name
                         FROM geoname g
-                        JOIN document d ON g.document_id = d.id
+                        JOIN permitted_documents(:principal, :minLevel) d ON g.document_id = d.id
                         WHERE ST_DWithin(location_geog, CAST(ST_MakePoint(:longitude,:latitude) AS geography), :radius)
                         AND d.corpusId = :corpusId
                         LIMIT :limit
                     """;
 
             var query = session.createNativeQuery(sql);
+            query.setParameter("principal", accessManager.current().principal());
+            query.setParameter("minLevel", DocumentPermission.DOCUMENT_PERMISSION_LEVEL.READ.ordinal());
             query.setParameter("longitude", longitude);
             query.setParameter("latitude", latitude);
             query.setParameter("radius", radius); // in meters
@@ -1362,7 +1636,8 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
         });
     }
 
-    public List<GbifOccurrence> getGbifOccurrencesByGbifTaxonId(long gbifTaxonId) throws DatabaseOperationException {
+    @Override
+    public List<GbifOccurrence> getGbifOccurrencesByGbifTaxonId(long gbifTaxonId) throws DatabaseOperationException, DocumentAccessDeniedException {
         return executeOperationSafely((session) -> {
             var criteriaBuilder = session.getCriteriaBuilder();
             var criteriaQuery = criteriaBuilder.createQuery(GbifOccurrence.class);
@@ -1380,7 +1655,8 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
         });
     }
 
-    public long countLexiconEntries() throws DatabaseOperationException {
+    @Override
+    public long countLexiconEntries() throws DatabaseOperationException, DocumentAccessDeniedException {
         return executeOperationSafely((session) -> {
             var builder = session.getCriteriaBuilder();
             var criteria = builder.createQuery(Long.class);
@@ -1390,11 +1666,13 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
         });
     }
 
-    public LexiconEntry getLexiconEntryId(LexiconEntryId id) throws DatabaseOperationException {
+    @Override
+    public LexiconEntry getLexiconEntryId(LexiconEntryId id) throws DatabaseOperationException, DocumentAccessDeniedException {
         return executeOperationSafely((session) -> session.get(LexiconEntry.class, id));
     }
 
-    public NamedEntity getNamedEntityById(long id) throws DatabaseOperationException {
+    @Override
+    public NamedEntity getNamedEntityById(long id) throws DatabaseOperationException, DocumentAccessDeniedException {
         return executeOperationSafely((session) -> {
             var entity = session.get(NamedEntity.class, id);
             Hibernate.initialize(entity.getPage());
@@ -1402,7 +1680,8 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
         });
     }
 
-    public GazetteerTaxon getGazetteerTaxonById(long id) throws DatabaseOperationException {
+    @Override
+    public GazetteerTaxon getGazetteerTaxonById(long id) throws DatabaseOperationException, DocumentAccessDeniedException {
         return executeOperationSafely((session) -> {
             var taxon = session.get(GazetteerTaxon.class, id);
             Hibernate.initialize(taxon.getPage());
@@ -1410,7 +1689,8 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
         });
     }
 
-    public GnFinderTaxon getGnFinderTaxonById(long id) throws DatabaseOperationException {
+    @Override
+    public GnFinderTaxon getGnFinderTaxonById(long id) throws DatabaseOperationException, DocumentAccessDeniedException {
         return executeOperationSafely((session) -> {
             var taxon = session.get(GnFinderTaxon.class, id);
             Hibernate.initialize(taxon.getPage());
@@ -1418,7 +1698,8 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
         });
     }
 
-    public BiofidTaxon getBiofidTaxonById(long id) throws DatabaseOperationException {
+    @Override
+    public BiofidTaxon getBiofidTaxonById(long id) throws DatabaseOperationException, DocumentAccessDeniedException {
         return executeOperationSafely((session) -> {
             var taxon = session.get(BiofidTaxon.class, id);
             Hibernate.initialize(taxon.getPage());
@@ -1426,7 +1707,8 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
         });
     }
 
-    public GeoName getGeoNameAnnotationById(long id) throws DatabaseOperationException {
+    @Override
+    public GeoName getGeoNameAnnotationById(long id) throws DatabaseOperationException, DocumentAccessDeniedException {
         return executeOperationSafely((session) -> {
             var geo = session.get(GeoName.class, id);
             Hibernate.initialize(geo.getPage());
@@ -1434,7 +1716,8 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
         });
     }
 
-    public Time getTimeAnnotationById(long id) throws DatabaseOperationException {
+    @Override
+    public Time getTimeAnnotationById(long id) throws DatabaseOperationException, DocumentAccessDeniedException {
         return executeOperationSafely((session) -> {
             var time = session.get(Time.class, id);
             Hibernate.initialize(time.getPage());
@@ -1442,7 +1725,8 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
         });
     }
 
-    public Sentence getSentenceAnnotationById(long id) throws DatabaseOperationException {
+    @Override
+    public Sentence getSentenceAnnotationById(long id) throws DatabaseOperationException, DocumentAccessDeniedException {
         return executeOperationSafely((session) -> {
             var sentence = session.get(Sentence.class, id);
             Hibernate.initialize(sentence.getPage());
@@ -1450,7 +1734,8 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
         });
     }
 
-    public Lemma getLemmaById(long id) throws DatabaseOperationException {
+    @Override
+    public Lemma getLemmaById(long id) throws DatabaseOperationException, DocumentAccessDeniedException {
         return executeOperationSafely((session) -> {
             var lemma = session.get(Lemma.class, id);
             Hibernate.initialize(lemma.getPage());
@@ -1458,7 +1743,7 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
         });
     }
 
-    public CompleteNegation getCompleteNegationById(long id) throws DatabaseOperationException {
+    public CompleteNegation getCompleteNegationById(long id) throws DatabaseOperationException, DocumentAccessDeniedException {
         return executeOperationSafely((session) -> {
             var neg = session.get(CompleteNegation.class, id);
             Hibernate.initialize(neg);
@@ -1467,7 +1752,7 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
         });
     }
 
-    public CompleteNegation getCompleteNegationByCueId(long id) throws DatabaseOperationException {
+    public CompleteNegation getCompleteNegationByCueId(long id) throws DatabaseOperationException, DocumentAccessDeniedException {
         return executeOperationSafely((session) -> {
             String sql = "SELECT * FROM completenegation WHERE cue_id = :id";
 
@@ -1492,15 +1777,15 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
         });
     }
 
-    public TopicValueBase getTopicValueBaseById(long id) throws DatabaseOperationException {
+    public TopicValueBase getTopicValueBaseById(long id) throws DatabaseOperationException, DocumentAccessDeniedException {
         return executeOperationSafely((session) -> session.get(TopicValueBase.class, id));
     }
 
-    public UnifiedTopic getUnifiedTopicById(long id) throws DatabaseOperationException {
+    public UnifiedTopic getUnifiedTopicById(long id) throws DatabaseOperationException, DocumentAccessDeniedException {
         return executeOperationSafely((session) -> session.get(UnifiedTopic.class, id));
     }
 
-    public UnifiedTopic getInitializedUnifiedTopicById(long id) throws DatabaseOperationException {
+    public UnifiedTopic getInitializedUnifiedTopicById(long id) throws DatabaseOperationException, DocumentAccessDeniedException {
         return executeOperationSafely((session) -> {
             var topic = session.get(UnifiedTopic.class, id);
             Hibernate.initialize(topic.getTopics());
@@ -1512,7 +1797,8 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
         });
     }
 
-    public <T extends KeywordDistribution> List<T> getKeywordDistributionsByString(Class<T> clazz, String topic, int limit) throws DatabaseOperationException {
+    @Override
+    public <T extends KeywordDistribution> List<T> getKeywordDistributionsByString(Class<T> clazz, String topic, int limit) throws DatabaseOperationException, DocumentAccessDeniedException {
         return executeOperationSafely((session) -> {
             var builder = session.getCriteriaBuilder();
             var query = builder.createQuery(clazz);
@@ -1562,7 +1848,8 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
         });
     }
 
-    public <T extends KeywordDistribution> T getKeywordDistributionById(Class<T> clazz, long id) throws DatabaseOperationException {
+    @Override
+    public <T extends KeywordDistribution> T getKeywordDistributionById(Class<T> clazz, long id) throws DatabaseOperationException, DocumentAccessDeniedException {
         return executeOperationSafely((session) -> {
             var dist = session.get(clazz, id);
             // Check if the retrieved object is an instance of DocumentKeywordDistribution
@@ -1573,7 +1860,8 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
         });
     }
 
-    public boolean checkIfGbifOccurrencesExist(long gbifTaxonId) throws DatabaseOperationException {
+    @Override
+    public boolean checkIfGbifOccurrencesExist(long gbifTaxonId) throws DatabaseOperationException, DocumentAccessDeniedException {
         return executeOperationSafely((session) -> {
             var builder = session.getCriteriaBuilder();
             var criteriaQuery = builder.createQuery(Long.class);
@@ -1587,7 +1875,46 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
         });
     }
 
-    public Document getCompleteDocumentById(long id, int skipPages, int pageLimit) throws DatabaseOperationException {
+    public boolean userHasPermission(Document document, UceUser user, DocumentPermission.DOCUMENT_PERMISSION_LEVEL level) {
+        Set<DocumentPermission> documentPermissions = document.getPermissions();
+
+        // check for permissions if the document has any
+        // if not, assume this is a "public" document and allow read access
+        // this will keep backwards compatibility with older versions
+        if (documentPermissions == null || documentPermissions.isEmpty()) {
+            logger.info("Document {} has no permissions, assuming public read access", document.getId());
+            return true;
+        }
+
+        // if not public, a user is required
+        if (user == null) {
+            logger.warn("No user provided for permission check on document {}, denying access", document.getId());
+            return false;
+        }
+
+        // else check if this specific user has the required permission level
+        for (DocumentPermission permission : documentPermissions) {
+            // only need to check effective permissions
+            if (permission.getType() == DocumentPermission.DOCUMENT_PERMISSION_TYPE.EFFECTIVE) {
+                // permission level is sufficient
+                if (permission.getLevel().ordinal() >= level.ordinal()) {
+                    // check if the permission applies to the user
+                    if (permission.getName().equals(user.getUsername())) {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        logger.warn("User {} does not have sufficient permissions on document {}, denying access", user.getUsername(), document.getId());
+        return false;
+    }
+
+    @Override
+    public Document getCompleteDocumentById(long id, int skipPages, int pageLimit) throws DatabaseOperationException, DocumentAccessDeniedException {
+
+        accessManager.checkAccess(id, DocumentPermission.DOCUMENT_PERMISSION_LEVEL.READ);
+
         return executeOperationSafely((session) -> {
             var doc = session.get(Document.class, id);
 
@@ -1595,7 +1922,8 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
         });
     }
 
-    public void saveOrUpdateCorpusTsnePlot(CorpusTsnePlot corpusTsnePlot, Corpus corpus) throws DatabaseOperationException {
+    @Override
+    public void saveOrUpdateCorpusTsnePlot(CorpusTsnePlot corpusTsnePlot, Corpus corpus) throws DatabaseOperationException, DocumentAccessDeniedException {
         executeOperationSafely((session) -> {
             session.saveOrUpdate(corpus);
             // Save or update the corpus tsne plot
@@ -1606,7 +1934,8 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
         });
     }
 
-    public void saveOrUpdateManyAnnotationLinks(List<AnnotationLink> links) throws DatabaseOperationException {
+    @Override
+    public void saveOrUpdateManyAnnotationLinks(List<AnnotationLink> links) throws DatabaseOperationException, DocumentAccessDeniedException {
         final int BATCH_SIZE = 1000;
         // Since the links go in the hundred of millions for giant documents, we have to chunk the bulk inserts...
         executeOperationSafely(session -> {
@@ -1626,7 +1955,8 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
         });
     }
 
-    public void saveOrUpdateManyDocumentToAnnotationLinks(List<DocumentToAnnotationLink> links) throws DatabaseOperationException {
+    @Override
+    public void saveOrUpdateManyDocumentToAnnotationLinks(List<DocumentToAnnotationLink> links) throws DatabaseOperationException, DocumentAccessDeniedException {
         executeOperationSafely((session -> {
             for (var link : links) {
                 session.saveOrUpdate(link);
@@ -1635,7 +1965,8 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
         }));
     }
 
-    public void saveOrUpdateManyAnnotationToDocumentLinks(List<AnnotationToDocumentLink> links) throws DatabaseOperationException {
+    @Override
+    public void saveOrUpdateManyAnnotationToDocumentLinks(List<AnnotationToDocumentLink> links) throws DatabaseOperationException, DocumentAccessDeniedException {
         executeOperationSafely((session -> {
             for (var link : links) {
                 session.saveOrUpdate(link);
@@ -1644,7 +1975,8 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
         }));
     }
 
-    public void saveOrUpdateManyDocumentLinks(List<DocumentLink> documentLinks) throws DatabaseOperationException {
+    @Override
+    public void saveOrUpdateManyDocumentLinks(List<DocumentLink> documentLinks) throws DatabaseOperationException, DocumentAccessDeniedException {
         executeOperationSafely((session -> {
             for (var link : documentLinks) {
                 session.saveOrUpdate(link);
@@ -1653,63 +1985,78 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
         }));
     }
 
-    public void saveOrUpdateUceImport(UCEImport uceImport) throws DatabaseOperationException {
+    @Override
+    public void saveOrUpdateUceImport(UCEImport uceImport) throws DatabaseOperationException, DocumentAccessDeniedException {
         executeOperationSafely((session) -> {
             session.saveOrUpdate(uceImport);
             return null;
         });
     }
 
-    public void saveOrUpdateImportLog(ImportLog importLog) throws DatabaseOperationException {
+    @Override
+    public void saveOrUpdateImportLog(ImportLog importLog) throws DatabaseOperationException, DocumentAccessDeniedException {
         executeOperationSafely((session) -> {
             session.saveOrUpdate(importLog);
             return null;
         });
     }
 
-    public void saveOrUpdateUCEMetadataFilter(UCEMetadataFilter filter) throws DatabaseOperationException {
+    @Override
+    public void saveOrUpdateUCEMetadataFilter(UCEMetadataFilter filter) throws DatabaseOperationException, DocumentAccessDeniedException {
         executeOperationSafely((session) -> {
             session.saveOrUpdate(filter);
             return null;
         });
     }
 
-    public void saveUCEMetadataFilter(UCEMetadataFilter filter) throws DatabaseOperationException {
+    @Override
+    public void saveUCEMetadataFilter(UCEMetadataFilter filter) throws DatabaseOperationException, DocumentAccessDeniedException {
         executeOperationSafely((session) -> {
             session.save(filter);
             return null;
         });
     }
 
-    public void saveDocument(Document document) throws DatabaseOperationException {
+    @Override
+    public void saveDocument(Document document) throws DatabaseOperationException, DocumentAccessDeniedException {
+
+        accessManager.checkAccess(document.getId(), DocumentPermission.DOCUMENT_PERMISSION_LEVEL.WRITE);
+
         executeOperationSafely((session) -> {
             session.save(document);
             return null;
         });
     }
+    
+    @Override
+    public void updateDocument(Document document) throws DatabaseOperationException, DocumentAccessDeniedException {
 
-    public void updateDocument(Document document) throws DatabaseOperationException {
+        accessManager.checkAccess(document.getId(), DocumentPermission.DOCUMENT_PERMISSION_LEVEL.WRITE);
+
         executeOperationSafely((session) -> {
             session.update(document);
             return null;
         });
     }
 
-    public void saveUceLog(UCELog log) throws DatabaseOperationException {
+    @Override
+    public void saveUceLog(UCELog log) throws DatabaseOperationException, DocumentAccessDeniedException {
         executeOperationSafely((session) -> {
             session.saveOrUpdate(log);
             return null;
         });
     }
 
-    public void saveCorpus(Corpus corpus) throws DatabaseOperationException {
+    @Override
+    public void saveCorpus(Corpus corpus) throws DatabaseOperationException, DocumentAccessDeniedException {
         executeOperationSafely((session) -> {
             session.save(corpus);
             return null;
         });
     }
 
-    public void savePageKeywordDistribution(Page page) throws DatabaseOperationException {
+    @Override
+    public void savePageKeywordDistribution(Page page) throws DatabaseOperationException, DocumentAccessDeniedException {
         executeOperationSafely((session) -> {
             session.saveOrUpdate(page);
             // Save or update the page's PageKeywordDistribution
@@ -1720,7 +2067,11 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
         });
     }
 
-    public void saveDocumentKeywordDistribution(Document document) throws DatabaseOperationException {
+    @Override
+    public void saveDocumentKeywordDistribution(Document document) throws DatabaseOperationException, DocumentAccessDeniedException {
+
+        accessManager.checkAccess(document.getId(), DocumentPermission.DOCUMENT_PERMISSION_LEVEL.WRITE);
+
         executeOperationSafely((session) -> {
             session.saveOrUpdate(document);
             // Save or update the page's PageKeywordDistribution
@@ -1731,7 +2082,10 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
         });
     }
 
-    public void saveDocumentTopThreeTopics(Document document) throws DatabaseOperationException {
+    public void saveDocumentTopThreeTopics(Document document) throws DatabaseOperationException, DocumentAccessDeniedException {
+
+        accessManager.checkAccess(document.getId(), DocumentPermission.DOCUMENT_PERMISSION_LEVEL.WRITE);
+
         executeOperationSafely((session) -> {
             session.saveOrUpdate(document);
             // Save or update the document's TopicDistribution
@@ -1742,14 +2096,20 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
         });
     }
 
-    public DocumentTopThreeTopics getDocumentTopThreeTopicsById(long id) throws DatabaseOperationException {
+    public DocumentTopThreeTopics getDocumentTopThreeTopicsById(long id) throws DatabaseOperationException, DocumentAccessDeniedException {
+
+        accessManager.checkAccess(id, DocumentPermission.DOCUMENT_PERMISSION_LEVEL.READ);
+
         return executeOperationSafely((session) -> {
             var dist = session.get(DocumentTopThreeTopics.class, id);
             return dist;
         });
     }
 
-    public List<Object[]> getTopTopicsByDocument(long documentId, int limit) throws DatabaseOperationException {
+    public List<Object[]> getTopTopicsByDocument(long documentId, int limit) throws DatabaseOperationException, DocumentAccessDeniedException {
+
+        accessManager.checkAccess(documentId, DocumentPermission.DOCUMENT_PERMISSION_LEVEL.READ);
+
         return executeOperationSafely((session) -> {
             // Use native SQL to query the document_topics_raw table
             String sql = "SELECT topiclabel, thetadt FROM documenttopicsraw " +
@@ -1765,7 +2125,8 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
         });
     }
 
-    public List<Object[]> getTopTopicsBySentence(long sentenceId, int limit) throws DatabaseOperationException {
+    
+    public List<Object[]> getTopTopicsBySentence(long sentenceId, int limit) throws DatabaseOperationException, DocumentAccessDeniedException {
         return executeOperationSafely((session) -> {
             // Direct query using sentence_id
             String sql = "SELECT topiclabel, thetast FROM sentencetopics " +
@@ -1781,7 +2142,7 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
         });
     }
 
-    public List<Object[]> getTopDocumentsByTopicLabel(String topicValue, long corpusId, int limit) throws DatabaseOperationException {
+    public List<Object[]> getTopDocumentsByTopicLabel(String topicValue, long corpusId, int limit) throws DatabaseOperationException, DocumentAccessDeniedException {
         return executeOperationSafely((session) -> {
             String sql = "SELECT d.id, d.documentid, dtr.thetadt " +
                          "FROM document d " +
@@ -1800,7 +2161,7 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
         });
     }
 
-    public List<TopicWord> getTopicWordsByTopicLabel(String topicValue, long corpusId) throws DatabaseOperationException {
+    public List<TopicWord> getTopicWordsByTopicLabel(String topicValue, long corpusId) throws DatabaseOperationException, DocumentAccessDeniedException {
         return executeOperationSafely((session) -> {
             String sql = "SELECT word, probability " +
                          "FROM corpustopicwords " +
@@ -1826,7 +2187,7 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
         });
     }
 
-    public List<Object[]> getSimilarTopicsbyTopicLabel(String topicValue, long corpusId, int minSharedWords, int result_limit) throws DatabaseOperationException {
+    public List<Object[]> getSimilarTopicsbyTopicLabel(String topicValue, long corpusId, int minSharedWords, int result_limit) throws DatabaseOperationException, DocumentAccessDeniedException {
         return executeOperationSafely((session) -> {
             String sql = "SELECT * FROM find_similar_topics(:topicValue, :minSharedWords, :result_limit, :corpusId)";
 
@@ -1840,7 +2201,7 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
         });
     }
 
-    public List<TopicWord> getNormalizedTopicWordsForCorpus(long corpusId) throws DatabaseOperationException {
+    public List<TopicWord> getNormalizedTopicWordsForCorpus(long corpusId) throws DatabaseOperationException, DocumentAccessDeniedException {
         return executeOperationSafely((session) -> {
             String sql = "SELECT word, " +
                          "AVG(probability) AS avg_probability, " +
@@ -1867,17 +2228,19 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
         });
     }
 
-    public Map<String, Double> getTopNormalizedTopicsByCorpusId(long corpusId) throws DatabaseOperationException {
+    public Map<String, Double> getTopNormalizedTopicsByCorpusId(long corpusId) throws DatabaseOperationException, DocumentAccessDeniedException {
         return executeOperationSafely((session) -> {
             String sql = """
                         SELECT topic, normalized_score
-                        FROM get_normalized_topic_scores(:corpusId)
+                        FROM get_normalized_topic_scores(:corpusId, :p_user_name, :p_min_level)
                         ORDER BY normalized_score DESC
                         LIMIT 20
                     """;
 
             var query = session.createNativeQuery(sql)
-                    .setParameter("corpusId", corpusId);
+                    .setParameter("corpusId", corpusId)
+                    .setParameter("p_user_name", accessManager.current().principal())
+                    .setParameter("p_min_level", DocumentPermission.DOCUMENT_PERMISSION_LEVEL.READ.ordinal());
 
             List<Object[]> results = query.getResultList();
 
@@ -1892,7 +2255,10 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
         });
     }
 
-    public List<TopicWord> getDocumentWordDistribution(long documentId) throws DatabaseOperationException {
+    public List<TopicWord> getDocumentWordDistribution(long documentId) throws DatabaseOperationException, DocumentAccessDeniedException {
+
+        accessManager.checkAccess(documentId, DocumentPermission.DOCUMENT_PERMISSION_LEVEL.READ);
+
         return executeOperationSafely((session) -> {
             String sql = "SELECT word, AVG(probability) AS avg_probability " +
                          "FROM documenttopicwords " +
@@ -1927,7 +2293,12 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
     }
 
     // Similar documents based on the shared topic words
-    public List<Object[]> getSimilarDocumentbyDocumentId(long documentId) throws DatabaseOperationException {
+    public List<Object[]> getSimilarDocumentbyDocumentId(long documentId) throws DatabaseOperationException, DocumentAccessDeniedException {
+
+        accessManager.checkAccess(documentId, DocumentPermission.DOCUMENT_PERMISSION_LEVEL.READ);
+
+        var ctx = accessManager.current();
+
         return executeOperationSafely((session) -> {
             String sql = "WITH sourcewords AS (" +
                          "    SELECT word " +
@@ -1947,17 +2318,22 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
                          ") " +
                          "SELECT d.documentid, s.sharedwords " +
                          "FROM similardocs s " +
-                         "JOIN document d ON s.document_id = d.id " +
+                         "JOIN permitted_documents(:principal, :minLevel) d ON s.document_id = d.id " +
                          "LIMIT 20";
 
-            var query = session.createNativeQuery(sql)
-                    .setParameter("documentId", documentId);
+            var query = session.createNativeQuery(sql)                   
+                .setParameter("principal", ctx.principal())
+                .setParameter("minLevel", DocumentPermission.DOCUMENT_PERMISSION_LEVEL.READ.ordinal())
+                .setParameter("documentId", documentId);
 
             return query.getResultList();
         });
     }
 
-    public List<Object[]> getTaxonValuesAndCountByPageId(long documentId) throws DatabaseOperationException {
+    public List<Object[]> getTaxonValuesAndCountByPageId(long documentId) throws DatabaseOperationException, DocumentAccessDeniedException {
+
+        accessManager.checkAccess(documentId, DocumentPermission.DOCUMENT_PERMISSION_LEVEL.READ);
+
         return executeOperationSafely((session) -> {
             List<String> taxonTypes = ReflectionUtils.getTaxonSystemTypes(Taxon.class);
 
@@ -1986,7 +2362,10 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
         });
     }
 
-    public List<Object[]> getNamedEntityValuesAndCountByPage(long documentId) throws DatabaseOperationException {
+    public List<Object[]> getNamedEntityValuesAndCountByPage(long documentId) throws DatabaseOperationException, DocumentAccessDeniedException {
+        
+        accessManager.checkAccess(documentId, DocumentPermission.DOCUMENT_PERMISSION_LEVEL.READ);
+
         return executeOperationSafely((session) -> {
             // Construct the SQL query to select page_id and coveredtext from the namedentity table
             String sql = "SELECT ne.page_id, ne.coveredtext AS named_entity_value, ne.typee AS named_entity_type " +
@@ -2000,7 +2379,10 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
         });
     }
 
-    public List<Object[]> getLemmaByPage(long documentId) throws DatabaseOperationException {
+    public List<Object[]> getLemmaByPage(long documentId) throws DatabaseOperationException, DocumentAccessDeniedException {
+
+        accessManager.checkAccess(documentId, DocumentPermission.DOCUMENT_PERMISSION_LEVEL.READ);
+
         return executeOperationSafely((session) -> {
             // Construct the SQL query to select page_id and coveredtext from the namedentity table
             String sql = "SELECT lemma.page_id, lemma.coveredtext AS lemma_value, lemma.coarsevalue AS coarsevalue " +
@@ -2014,7 +2396,10 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
         });
     }
 
-    public List<Object[]> getGeonameByPage(long documentId) throws DatabaseOperationException {
+    public List<Object[]> getGeonameByPage(long documentId) throws DatabaseOperationException, DocumentAccessDeniedException {
+
+        accessManager.checkAccess(documentId, DocumentPermission.DOCUMENT_PERMISSION_LEVEL.READ);
+        
         return executeOperationSafely((session) -> {
             String sql = "SELECT gn.page_id, gn.coveredtext AS geoname_value " +
                     "FROM geoname gn " +
@@ -2027,8 +2412,10 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
         });
     }
 
+    public List<Object[]> getTopicDistributionByPageForDocument(long documentId) throws DatabaseOperationException, DocumentAccessDeniedException {
 
-    public List<Object[]> getTopicDistributionByPageForDocument(long documentId) throws DatabaseOperationException {
+        accessManager.checkAccess(documentId, DocumentPermission.DOCUMENT_PERMISSION_LEVEL.READ);
+
         return executeOperationSafely((session) -> {
             String sql = """
                     WITH best_topic_per_sentence AS (
@@ -2065,7 +2452,10 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
         });
     }
 
-    public List<Object[]> getSentenceTopicsWithEntitiesByPageForDocument(long documentId) throws DatabaseOperationException {
+    public List<Object[]> getSentenceTopicsWithEntitiesByPageForDocument(long documentId) throws DatabaseOperationException, DocumentAccessDeniedException {
+        
+        accessManager.checkAccess(documentId, DocumentPermission.DOCUMENT_PERMISSION_LEVEL.READ);
+
         return executeOperationSafely((session) -> {
             String sql = """
                     WITH best_topic_per_sentence AS (
@@ -2109,7 +2499,10 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
         });
     }
 
-    public List<Object[]> getTopicWordsByDocumentId(long documentId) throws DatabaseOperationException {
+    public List<Object[]> getTopicWordsByDocumentId(long documentId) throws DatabaseOperationException, DocumentAccessDeniedException {
+
+        accessManager.checkAccess(documentId, DocumentPermission.DOCUMENT_PERMISSION_LEVEL.READ);
+
         return executeOperationSafely((session) -> {
             String sql = "SELECT topiclabel, word, AVG(probability) AS avg_probability " +
                          "FROM documenttopicwords " +
@@ -2126,7 +2519,10 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
         });
     }
 
-    public Map<Long, Long> getUnifiedTopicToSentenceMap(long documentId) throws DatabaseOperationException {
+    public Map<Long, Long> getUnifiedTopicToSentenceMap(long documentId) throws DatabaseOperationException, DocumentAccessDeniedException {
+
+        accessManager.checkAccess(documentId, DocumentPermission.DOCUMENT_PERMISSION_LEVEL.READ);
+
         return executeOperationSafely((session) -> {
             String sql = "SELECT unifiedtopic_id, sentence_id FROM sentencetopics WHERE document_id = :documentId";
 
@@ -2236,6 +2632,11 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
         return doc;
     }
 
+    @FunctionalInterface
+    private interface SessionOperation<T> {
+        T apply(Session session) throws DocumentAccessDeniedException;
+    }
+
     /**
      * Since we need to handle exceptions, closing the session properly, rollback etc., we write a generic function
      * which is to be used whenever we call the database.
@@ -2243,7 +2644,7 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
      * @param <T>
      * @return
      */
-    private <T> T executeOperationSafely(Function<Session, T> operation) throws DatabaseOperationException {
+    private <T> T executeOperationSafely(SessionOperation<T> operation) throws DatabaseOperationException, DocumentAccessDeniedException {
         Session session = null;
         Transaction transaction = null;
         try {
@@ -2252,10 +2653,26 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
             T result = operation.apply(session);
             transaction.commit();
             return result;
+        } catch (DocumentAccessDeniedException dade) {
+            if (transaction != null) {
+                transaction.rollback();
+            }
+            throw dade;
         } catch (Exception ex) {
             if (transaction != null) {
                 transaction.rollback();
             }
+
+            var accessDenied = findCause(ex, DocumentAccessDeniedException.class);
+            if (accessDenied != null) {
+                throw accessDenied;
+            }
+
+            var databaseEx = findCause(ex, DatabaseOperationException.class);
+            if (databaseEx != null) {
+                throw databaseEx;
+            }
+
             throw new DatabaseOperationException(
                     "Error while executing database operation. All possible db transactions have been rolled back and state has been restored.",
                     ex);
@@ -2264,6 +2681,17 @@ public class PostgresqlDataInterface_Impl implements DataInterface {
                 session.close();
             }
         }
+    }
+
+    private <T extends Throwable> T findCause(Throwable throwable, Class<T> expectedType) {
+        var current = throwable;
+        while (current != null) {
+            if (expectedType.isInstance(current)) {
+                return expectedType.cast(current);
+            }
+            current = current.getCause();
+        }
+        return null;
     }
 
     private String escapeSql(String input) {

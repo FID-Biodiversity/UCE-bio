@@ -1,10 +1,9 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <link rel="stylesheet"
-          href="css/bootstrap.min.css">
-   <link href="css/animate.min.css" >
-    <link href="fontawesome-free-7.1.0-web/css/all.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/bootstrap/bootstrap.min.css">
+    <link rel="stylesheet" href="css/animate.min.css">
+    <script src="js/fontawesome/all.js"></script>
     <style>
         <#include "*/css/site.css">
         <#include "*/css/corpus-universe.css">
@@ -13,8 +12,8 @@
     <script type="importmap">
         {
           "imports": {
-            "three": "js/external-js/three.module.js",
-            "three/addons/": "js/external-js/examples/jsm/"
+            "three": "//js/three/three.module.js",
+            "three/addons/": "//js/examples/jsm/"
           }
         }
     </script>
@@ -80,22 +79,17 @@
 
 </div>
 
-<script src="js/external-js/jquery-3.6.0.min.js"></script>
-<script src="js/external-js/popper.min.js"></script>
-<script src="js/external-js/bootstrap.min.js"> </script>
-<!-- Make sure you put this AFTER Leaflet's CSS -->
-<script src="js/external-js/leaflet.js">/script>
-<script src="js/external-js/d3.min.js"> </script>
-<script src="js/external-js/d3.v3.min.js"> </script>
+<script src="js/jquery-3.7.1.min.js"></script>
+<script src="js/popper.js/umd/popper.min.js"></script>
+<script src="js/bootstrap/bootstrap.min.js"></script>
 
+<script src="js/d3.v3.min.js"></script>
 
-
-
-<script src="js/external-js/chart.js"></script>
-<script src="js/external-js/chartjs-plugin-annotation.js"></script>
-<script src="js/external-js/chartjs-plugin-datalabels.min.js"</script>
-<script src="js/external-js/gsap.min.js"></script>
-<script src="js/external-js/require.js"></script>
+<script src="js/chart.js"></script>
+<script src="js/chartjs-plugin-annotation.js"></script>
+<script src="js/chartjs-plugin-datalabels.min.js"></script>
+<script src="js/gsap.min.js"></script>
+<script src="js/require.js"></script>
 
 <script>
     <#include "*/js/site.js">

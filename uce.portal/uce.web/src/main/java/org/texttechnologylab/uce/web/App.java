@@ -1,18 +1,18 @@
 package org.texttechnologylab.uce.web;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import freemarker.template.Configuration;
-import io.javalin.Javalin;
-import io.javalin.config.JavalinConfig;
-import io.javalin.http.staticfiles.Location;
-import io.javalin.json.JsonMapper;
-import io.modelcontextprotocol.server.McpServer;
-import io.modelcontextprotocol.server.McpSyncServer;
-import io.modelcontextprotocol.server.transport.HttpServletStreamableServerTransportProvider;
-import io.modelcontextprotocol.spec.McpSchema;
-import jakarta.servlet.MultipartConfigElement;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.lang.reflect.Type;
+import java.nio.file.Files;
+import java.nio.file.StandardOpenOption;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.UUID;
+
 import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.MissingOptionException;
 import org.apache.commons.cli.Options;
@@ -21,8 +21,11 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.eclipse.jetty.servlet.ServletHolder;
 import org.jetbrains.annotations.NotNull;
+import org.springframework.beans.factory.config.AutowireCapableBeanFactory;
+import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+import org.texttechnologylab.models.authentication.DocumentPermission;
 import org.texttechnologylab.uce.analysis.modules.CohMetrixInfo;
 import org.texttechnologylab.uce.analysis.modules.ModelGroup;
 import org.texttechnologylab.uce.analysis.modules.ModelResources;
@@ -31,8 +34,11 @@ import org.texttechnologylab.uce.common.config.CommonConfig;
 import org.texttechnologylab.uce.common.config.SpringConfig;
 import org.texttechnologylab.uce.common.config.UceConfig;
 import org.texttechnologylab.uce.common.exceptions.ExceptionUtils;
+import org.texttechnologylab.uce.common.models.authentication.UceUser;
 import org.texttechnologylab.uce.common.models.corpus.Corpus;
 import org.texttechnologylab.uce.common.models.corpus.UCELog;
+import org.texttechnologylab.uce.common.security.DocumentAccessContext;
+import org.texttechnologylab.uce.common.security.DocumentAccessManager;
 import org.texttechnologylab.uce.common.services.LexiconService;
 import org.texttechnologylab.uce.common.services.MapService;
 import org.texttechnologylab.uce.common.services.PostgresqlDataInterface_Impl;
@@ -43,19 +49,40 @@ import org.texttechnologylab.uce.search.LayeredSearch;
 import org.texttechnologylab.uce.web.auth.AuthenticationRouteRegister;
 import org.texttechnologylab.uce.web.freeMarker.Renderer;
 import org.texttechnologylab.uce.web.freeMarker.RequestContextHolder;
-import org.texttechnologylab.uce.web.routes.*;
+import org.texttechnologylab.uce.web.render.DefaultPaneRenderer;
+import org.texttechnologylab.uce.web.render.RendererRegistry;
+import org.texttechnologylab.uce.web.render.feedback.FeedbackPaneRenderer;
+import org.texttechnologylab.uce.web.routes.AnalysisApi;
+import org.texttechnologylab.uce.web.routes.AuthenticationApi;
+import org.texttechnologylab.uce.web.routes.CorpusUniverseApi;
+import org.texttechnologylab.uce.web.routes.DocumentApi;
+import org.texttechnologylab.uce.web.routes.ImportExportApi;
+import org.texttechnologylab.uce.web.routes.MapApi;
+import org.texttechnologylab.uce.web.routes.McpApi;
+import org.texttechnologylab.uce.web.routes.RAGApi;
+import org.texttechnologylab.uce.web.routes.SearchApi;
+import org.texttechnologylab.uce.web.routes.WikiApi;
 
-import java.io.*;
-import java.lang.reflect.Type;
-import java.nio.file.Files;
-import java.nio.file.StandardOpenOption;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 
-import static io.javalin.apibuilder.ApiBuilder.*;
+import freemarker.template.Configuration;
+import io.javalin.Javalin;
+import static io.javalin.apibuilder.ApiBuilder.after;
+import static io.javalin.apibuilder.ApiBuilder.before;
+import static io.javalin.apibuilder.ApiBuilder.delete;
+import static io.javalin.apibuilder.ApiBuilder.get;
+import static io.javalin.apibuilder.ApiBuilder.path;
+import static io.javalin.apibuilder.ApiBuilder.post;
+import io.javalin.config.JavalinConfig;
+import io.javalin.http.staticfiles.Location;
+import io.javalin.json.JsonMapper;
+import io.modelcontextprotocol.server.McpServer;
+import io.modelcontextprotocol.server.McpSyncServer;
+import io.modelcontextprotocol.server.transport.HttpServletStreamableServerTransportProvider;
+import io.modelcontextprotocol.spec.McpSchema;
+import jakarta.servlet.MultipartConfigElement;
 
 public class App {
     private static final Configuration configuration = Configuration.getDefaultConfiguration();
@@ -90,12 +117,16 @@ public class App {
 
         // Application context for services
         var context = ExceptionUtils.tryCatchLog(
-                () -> new AnnotationConfigApplicationContext(SpringConfig.class),
+                () -> new AnnotationConfigApplicationContext(WebSpringConfig.class),
                 (ex) -> logger.fatal("========== [ABORT] ==========\nThe Application context couldn't be established. " +
                         "This is very likely due to a missing/invalid database connection. UCE will have to shutdown."));
         if(context == null) return;
         logger.info("Loaded application context and services.");
 
+        // Initialize access manager for document permission checks
+        logger.info("Initializing the Document Access Manager...");
+        var accessManager = context.getBean(DocumentAccessManager.class);
+        
         // Execute the external database scripts
         logger.info("Executing external database scripts from " + commonConfig.getDatabaseScriptsLocation());
         ExceptionUtils.tryCatchLog(
@@ -130,7 +161,7 @@ public class App {
         logger.info("Initialized the System Job.");
 
         logger.info("Checking if we can or should update the lexicon... (this may take a moment depending on the time of the last update. Runs asynchronous.)");
-        CompletableFuture.runAsync(() -> {
+        accessManager.runAsyncAdmin(() -> {
             SystemStatus.LexiconIsCalculating = true;
             var lexiconService = context.getBean(LexiconService.class);
             var addedLexiconEntries = 0;
@@ -141,8 +172,8 @@ public class App {
         });
 
         logger.info("Checking if we can or should update any linkables... (this may take a moment depending on the time of the last update. Runs asynchronous.)");
-        CompletableFuture.runAsync(() -> {
-            try{
+        accessManager.runAsyncAdmin(() -> {
+            try {
                 var result = context.getBean(PostgresqlDataInterface_Impl.class).callLogicalLinksRefresh();
                 logger.info("Finished updating the linkables. Updated linkables: " + result);
             } catch (Exception ex){
@@ -151,8 +182,8 @@ public class App {
         });
 
         logger.info("Checking if we can or should update any geoname locations... (this may take a moment depending on the time of the last update. Runs asynchronous.)");
-        CompletableFuture.runAsync(() -> {
-            try{
+        accessManager.runAsyncAdmin(() -> {
+            try {
                 var result = context.getBean(PostgresqlDataInterface_Impl.class).callGeonameLocationRefresh();
                 logger.info("Finished updating the geoname locations. Updated locations: " + result);
                 logger.info("Trying to refresh the timeline map cache...");
@@ -224,7 +255,7 @@ public class App {
 
         logger.info("Javalin application setup done.");
 
-        int port = 4567;
+        int port = 4568;
         if (SystemStatus.UceConfig.getSettings().getPort() != null) {
             port = SystemStatus.UceConfig.getSettings().getPort();
         }
@@ -354,6 +385,10 @@ public class App {
         List<ModelGroup> groups = modelResources.getGroupedModelObjects();
 
         config.router.apiBuilder(() -> {
+                    var accessManager = context.getBean(DocumentAccessManager.class);
+                    var contextFactory = context.getAutowireCapableBeanFactory()
+                                            .getBeanProvider(DocumentAccessContext.class);
+
                     before(ctx -> {
                         ctx.res().setCharacterEncoding("UTF-8");
                         // Setup and log all API calls with some information. We don't want to log file uploads, since it would
@@ -389,6 +424,32 @@ public class App {
                         if (SystemStatus.UceConfig.getSettings().getAuthentication().isActivated()) {
                             var user = SessionManager.getUserFromRequest(ctx);
                             RequestContextHolder.setAuthenticatedUceUser(user);
+
+                            UceUser uceUser = user;
+                            String principal = (uceUser != null
+                                                && uceUser.getUsername() != null
+                                                && !uceUser.getUsername().isBlank())
+                                                ? uceUser.getUsername()
+                                                : DocumentPermission.PUBLIC_USERNAME;
+
+                            var roles = (uceUser != null && uceUser.getRoles() != null)
+                                        ? uceUser.getRoles()
+                                        : java.util.EnumSet.noneOf(org.texttechnologylab.uce.common.security.DocumentAccessContext.Role.class);
+
+                            var accessContext = contextFactory.getObject(principal, roles);
+                            var guard = accessManager.as(accessContext);
+                            ctx.attribute("documentAccessGuard", guard);
+                        }
+                    });
+
+                    after(ctx -> {
+                        AutoCloseable guard = ctx.attribute("documentAccessGuard");
+                        if (guard != null) {
+                            try {
+                                guard.close();
+                            } catch (Exception ex) {
+                                logger.warn("Failed to close DocumentAccessContext guard", ex);
+                            }
                         }
                     });
 
