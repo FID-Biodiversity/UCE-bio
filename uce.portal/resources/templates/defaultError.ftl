@@ -1,6 +1,6 @@
 <head>
-    <link href="css/bootstrap.min.css">
-    <link  href="css/animate.min.css">
+    <link rel="stylesheet" href="css/bootstrap/bootstrap.min.css">
+    <link rel="stylesheet" href="css/animate.min.css">
     <style>
         <#include "css/site.css">
     </style>

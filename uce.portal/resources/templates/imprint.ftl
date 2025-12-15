@@ -1,14 +1,14 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <link href="css/bootstrap.min.css">
-    <link href="css/animate.min.css">
-    <link href="css/leaflet.css"/>
+    <link rel="stylesheet" href="css/bootstrap/bootstrap.min.css">
+    <link rel="stylesheet" href="css/animate.min.css">
+    <link rel="stylesheet" href="leaflet/leaflet.css"/>
     <style>
         <#include "*/css/site.css">
     </style>
-    <link href="fontawesome-free-7.1.0-web/css/all.css" rel="stylesheet">
-    <script src="js/external-js/jquery-3.6.0.min.js"></script>
+    <script src="js/fontawesome/all.js"></script>
+    <script src="js/jquery-3.7.1.min.js"></script>
     <title>${languageResource.get("imprint")}</title>
 </head>
 

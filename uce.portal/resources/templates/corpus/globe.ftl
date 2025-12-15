@@ -3,13 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <title>${document.getDocumentTitle()}</title>
-    <link rel="stylesheet"
-          href="css/bootstrap.min.css">
-    <link href="css/animate.min.css"
-            rel="stylesheet">
-    <link rel="stylesheet" href="css/leaflet.css">
+    <link rel="stylesheet" href="css/bootstrap/bootstrap.min.css">
+    <link rel="stylesheet" href="css/animate.min.css">
 
-    <link href="fontawesome-free-7.1.0-web/css/all.css" rel="stylesheet">
+    <link rel="stylesheet" href="leaflet/leaflet.css"/>
+    <script src="js/fontawesome/all.js"></script>
     <style>
         <#include "*/css/site.css">
         <#include "*/css/globe.css">
@@ -98,15 +96,16 @@
 
 </body>
 
-<script src="js/external-js/jquery-3.6.0.min.js"></script>
-<script src="js/external-js/popper.min.js"> </script>
-<script src="js/external-js/bootstrap.min.js"> </script>
+<script src="js/jquery-3.7.1.min.js"></script>
+<script src="js/popper.js/umd/popper.min.js"></script>
+<script src="js/bootstrap/bootstrap.min.js"></script>
 <!-- Make sure you put this AFTER Leaflet's CSS -->
-<script src="js/external-js/leaflet.js"> </script>
-<script src="js/external-js/d3.min.js"> </script>
+<script src="leaflet/leaflet.js"></script>
 
-<script src="js/external-js/topojson-client.min.js"></script>
-<script src="js/external-js/globe.gl.min.js"></script>
+<script src="js/d3.v7.min.js"></script>
+<script src="js/topojson-client.min.js"></script>
+<script src="js/globe.gl.min.js"></script>
+
 <script src="js/utils.js"></script>
 <script>
     <#include "*/js/site.js">

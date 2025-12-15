@@ -1,14 +1,10 @@
 <!DOCTYPE html>
 <html lang="${languageResource.getDefaultLanguage()}">
 <head>
-    <link rel="stylesheet"
-          href="css/bootstrap.min.css">
-    <link href="css/animate.min.css"
-            rel="stylesheet">
-    <link rel="stylesheet" href="css/leaflet.css">
-    <link href="css/tabulator.min.css" rel="stylesheet">
-    <link href="fontawesome-free-7.1.0-web/css/all.css" rel="stylesheet">
-
+    <link rel="stylesheet" href="css/bootstrap/bootstrap.min.css">
+    <link rel="stylesheet" href="css/animate.min.css">
+    <link rel="stylesheet" href="leaflet/leaflet.css"/>
+    <link href="css/tabulator-tables/tabulator.min.css" rel="stylesheet">
     <style>
         <#include "*/css/site.css">
         <#include "*/css/simple-loader.css">
@@ -26,25 +22,19 @@
         <#include "*/css/leaflet/MarkerCluster.css">
         <#include "*/css/leaflet/MarkerCluster.Default.css">
     </style>
-        <script src="js/external-js/jquery-3.6.0.min.js"></script>
-        <script src="js/external-js/tabulator.min.js"></script>
-        <script src="js/external-js/xlsx.full.min.js"></script>
-        <!-- <script src="js/external-js/b0888ca2eb.js"></script>  FontAwesome kit -->
-        <!-- <script defer src="fontawesome-free-7.1.0-web/js/all.js"></script>-->
-        <script src="js/external-js/leaflet.js"></script>
-        <script src="js/external-js/popper.min.js"></script>
-        <script src="js/external-js/bootstrap.min.js"></script>
-        <script src="js/external-js/Control.Geocoder.js"></script>
-        <script src="js/external-js/leaflet.markercluster.js"></script>
-        <script src="js/external-js/marked.min.js"></script>
-        <script src="js/external-js/gsap.min.js"></script>
-        <script src="js/external-js/require.js"></script>
+    <script src="js/jquery-3.7.1.min.js"></script>
+    <script src="js/tabulator-tables/tabulator.min.js"></script>
+    <script src="js/xlsx.full.min.js"></script>
+    <script src="js/fontawesome/all.js"></script>
+    <script src="leaflet/leaflet.js"></script>
+    <script src="js/popper.js/umd/popper.min.js"></script>
+    <script src="js/bootstrap/bootstrap.min.js"></script>
     <!-- For corpus universe three.js -->
     <script type="importmap">
         {
           "imports": {
-            "three": "js/external-js/three.module.js",
-            "three/addons/": "js/external-js/examples/jsm/"
+            "three": "//js/three/three.module.js",
+            "three/addons/": "//js/examples/jsm/"
           }
         }
     </script>
@@ -54,16 +44,18 @@
     <script src="js/visualization/cdns/d3js-790.js"></script>
     <script src="js/visualization/cdns/drawflow-last.js"></script>
     <!-- for leaflet search plugin -->
-    <link rel="stylesheet" href="css/leaflet-control-geocoder@3.3.1/"/>
-
+    <link rel="stylesheet" href="css/Control.Geocoder.css"/>
+    <script src="js/Control.Geocoder.js"></script>
     <!-- leaflet clusters and heatmap plugins -->
     <script src="js/visualization/cdns/leaflet-heat.js"></script>
-
+    <script src="js/leaflet.markercluster.js"></script>
 
     <!-- for Markdown blocks -->
+    <script src="js/marked.min.js"></script>
     <script type="module" src="js/md-block.js"></script>
 
-
+    <script src="js/gsap.min.js"></script>
+    <script src="js/require.js"></script>
     <!--<script src="https://unpkg.com/@tweenjs/tween.js@^20.0.0/dist/tween.umd.js"></script>-->
     <title>${title}</title>
 </head>
