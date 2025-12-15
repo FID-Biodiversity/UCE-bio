@@ -97,10 +97,44 @@ public class LayeredSearch extends CacheItem {
                 this.layers.add(layer);
             }
         }
+        // KP: createDeepestLayerTableIfNotExists();
 
         this.executeLayersOnDb();
     }
-
+    private void createDeepestLayerTableIfNotExists() throws DatabaseOperationException, DocumentAccessDeniedException {
+        // KP
+        String query_old = "CREATE SCHEMA IF NOT EXISTS search;\n" +
+                "DO $$ \n" +
+                "BEGIN\n" +
+                " EXECUTE \n" +
+                "        'CREATE TABLE  IF NOT EXISTS search.Deepest_layers_each_type (\n" +
+                "            Taxon_id BIGINT,\n" +
+                "            Time_id BIGINT, \n" +
+                "            Location_id BIGINT\n" +
+                "        );\n" +
+                " '; \n" +
+                "END $$;\n";
+        String query = "CREATE SCHEMA IF NOT EXISTS search;\n" +
+                "DO $$ \n" +
+                "BEGIN\n" +
+                " EXECUTE \n" +
+                "        'CREATE TABLE IF NOT EXISTS search.deepest_layers_each_type_{SESSION_ID} (\n";
+        String query_end= "        );\n" + " '; \n" +
+                "END $$;\n";
+        query = query.replace("{SESSION_ID}", this.id);
+        LayeredSearchSlotType[] slots = LayeredSearchSlotType.values();
+        for (int i = 0; i < slots.length; i++) {
+            query = query + ("            ") + slots[i].toString() +  "_DEPTH INTEGER ";
+            if (i < slots.length - 1) {
+                query = query + ",\n";
+            } else {
+                query = query + "\n";  // No comma on the last line
+            }
+        }
+        query = query +query_end ;
+        logger.info(query);
+        db.executeSqlWithoutReturn(query);
+    }
     /**
      * This looks at the existing layers and, if necessary, applies and updates new and existing sql queries of the layers
           * @throws DocumentAccessDeniedException 
@@ -134,16 +168,21 @@ public class LayeredSearch extends CacheItem {
         dropTable(buildLayerTableName(layer.getDepth()));
         createSearchTableIfNotExists(buildLayerTableName(layer.getDepth()));
 
-        var insertTemplateQuery = "INSERT INTO search.{NAME} (id, document_id, begin_end) \n" +
-                                  "SELECT p.id, p.document_id, jsonb_agg(jsonb_build_array({ALIAS}.beginn, {ALIAS}.endd)) AS begin_end \n" +
-                                  "FROM {SOURCE} p\n" +
-                                  "JOIN {TABLE} {ALIAS} ON {ALIAS}.page_id = p.id\n" +
-                                  "WHERE {CONDITION} \n" +
-                                  "ON CONFLICT (id) DO NOTHING;";
-        var conditionEnding = "GROUP BY p.id, p.document_id HAVING COUNT(a.page_id) > 0";
+        var insertTemplateQuery = "INSERT INTO search.{NAME} (id, document_id, begin_end, covered_text) \n" +
+                "SELECT p.id, p.document_id, jsonb_agg(jsonb_build_array({ALIAS}.beginn, {ALIAS}.endd)) AS begin_end, {ALIAS}.coveredtext AS covered_text \n" +
+                "FROM {SOURCE} p\n" +
+                "JOIN {TABLE} {ALIAS} ON {ALIAS}.page_id = p.id\n" +
+                "WHERE {CONDITION} \n" +
+                "ON CONFLICT (id) DO NOTHING;";
+                //+
+                //"ALTER TABLE search.{NAME} \n" +
+                //"ADD layer_name varchar(500) NOT NULL DEFAULT '{NAME}';" ;
+        var conditionEnding = "GROUP BY a.coveredtext, p.id, p.document_id HAVING COUNT(a.page_id) > 0";
         var statements = new ArrayList<String>();
 
         for (var slot : layer.getSlots()) {
+            logger.info("TEST:  " + slot.toString() + " " + Integer.toString(layer.getDepth()) + " " + buildLayerTableName(layer.getDepth()) + " " + slot.getType());
+            //KP: UpdateDeepestLayerTable(slot.getType(), layer.getDepth());
             var sql = insertTemplateQuery;
             sql = sql.replace("{NAME}", buildLayerTableName(layer.getDepth()));
             sql = sql.replace("{ALIAS}", "a");
@@ -259,19 +298,52 @@ public class LayeredSearch extends CacheItem {
 
         return true;
     }
-
-    private void createSearchTableIfNotExists(String name) throws DatabaseOperationException, DocumentAccessDeniedException {
+    private void UpdateDeepestLayerTable(LayeredSearchSlotType slot_type, Integer layer_depth) throws DatabaseOperationException, DocumentAccessDeniedException  {
+        // KP
+        // Checke für slot type Spalte in Tabelle ob Layer tiefer ist -> wenn ja, dann update Layer_tiefe
+        String table_name = "search.deepest_layers_each_type_"+ this.id;
+        String query ="SELECT " + slot_type.toString() + "_depth from " +table_name;
+        logger.info("UpdateDeepestLayerTable: "+ query);
+        var resultList = db.executeSqlWithReturn(query);
+        logger.info("RESULTLIST " + resultList);
+        if(resultList.isEmpty()) {
+            logger.info("EMPTY");
+            //initialized! -> Insert layer_depth value into table
+            String initialize_value_query = "INSERT INTO "+table_name+ " ("+ slot_type.toString() + "_DEPTH) VALUES (" +  layer_depth.toString()+")" ;
+            db.executeSqlWithoutReturn(initialize_value_query);
+        }
+        else{
+            logger.info("NOT EMPTY");
+            var saved_depth = resultList.getFirst();
+            Integer saved_depth_int = (saved_depth instanceof Number n) ? n.intValue() : null;
+            if (saved_depth_int != null){
+                if (saved_depth_int < layer_depth){
+                String update_value_query =  "UPDATE "+table_name+ " \n"+"SET "+slot_type.toString() + "_DEPTH = " + layer_depth.toString() +";";
+                db.executeSqlWithoutReturn(update_value_query);
+                };
+            }
+            else{
+                String update_value_query =  "UPDATE "+table_name+ " \n"+"SET "+slot_type.toString() + "_DEPTH = " + layer_depth.toString() +";";
+                db.executeSqlWithoutReturn(update_value_query);
+            };
+            // Compare depth -> if higher insert layer_depth value into table
+            //var last_depth = (Object[])resultList.getFirst();
+        }
+        logger.info("UpdateDeepestLayerTable " + query);
+    }
+    private void createSearchTableIfNotExists(String name) throws DatabaseOperationException, DocumentAccessDeniedException  {
         var query = "CREATE SCHEMA IF NOT EXISTS search;\n" +
-                    "DO $$ \n" +
-                    "BEGIN\n" +
-                    "    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'search' AND table_name = '{NAME}') THEN\n" +
-                    "        CREATE TABLE search.{NAME} (\n" +
-                    "            id BIGINT PRIMARY KEY, \n" +
-                    "            document_id BIGINT,\n" +
-                    "            begin_end jsonb\n" +
-                    "        );\n" +
-                    "    END IF;\n" +
-                    "END $$;\n";
+                "DO $$ \n" +
+                "BEGIN\n" +
+                "    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'search' AND table_name = '{NAME}') THEN\n" +
+                "        CREATE TABLE search.{NAME} (\n" +
+                "            id BIGINT PRIMARY KEY, \n" +
+                "            document_id BIGINT,\n" +
+                "            begin_end jsonb, \n" +
+                "            covered_text text\n" +
+                "        );\n" +
+                "    END IF;\n" +
+                "END $$;\n";
         query = query.replace("{NAME}", name);
         db.executeSqlWithoutReturn(query);
     }

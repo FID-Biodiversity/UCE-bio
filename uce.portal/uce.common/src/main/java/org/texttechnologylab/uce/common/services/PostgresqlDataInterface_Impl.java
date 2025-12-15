@@ -11,6 +11,7 @@ import org.hibernate.criterion.Restrictions;
 import org.hibernate.query.NativeQuery;
 import org.hibernate.type.LongType;
 import org.hibernate.type.StandardBasicTypes;
+import org.hibernate.query.NativeQuery;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.context.annotation.Lazy;
@@ -2696,6 +2697,24 @@ public final class PostgresqlDataInterface_Impl implements DataInterface {
 
     private String escapeSql(String input) {
         return input.replace("(", "\\(").replace(")", "\\)").replace(":", "\\:").replace("|", "\\|");
+    }
+
+    public List<Object[]> getCoveredText(long corpusId, String LayerName ) throws DatabaseOperationException, DocumentAccessDeniedException  {
+        return executeOperationSafely((session) -> {
+            // Get Name final layer
+            String sql = "SELECT covered_text, COUNT(*) AS occurrence_count "+
+                    // "FROM search." +LayerName +
+                    "FROM \"search\".\"" + LayerName + "\" " +
+                    "WHERE document_id = :corpusId "+
+                    "GROUP BY covered_text " +
+                    "ORDER BY occurrence_count DESC";
+            var query = session.createNativeQuery(sql);
+            query.setParameter("corpusId", corpusId);
+
+            query.setMaxResults(3);
+
+            return query.getResultList();
+        });
     }
 
 }

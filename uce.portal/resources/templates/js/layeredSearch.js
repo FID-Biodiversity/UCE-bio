@@ -249,6 +249,7 @@ $('body').on('click', '.layered-search-builder-container .add-new-layer-btn', fu
  */
 $('body').on('click', '.layered-search-builder-container .layer-container .delete-layer-btn', function () {
     window.layeredSearchHandler.deleteLayer($(this).closest('.layer-container').attr('data-depth'));
+    window.layeredSearchHandler.applyLayerSearch(parseInt($(this).depth)-1); //KP
 })
 
 /**

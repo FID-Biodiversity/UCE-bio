@@ -414,7 +414,7 @@ public class SearchState extends CacheItem {
             // Whenever we set new current documents, recalculate the context state
             if (keywordInContextState == null) keywordInContextState = new KeywordInContextState();
             keywordInContextState.recalculate(this.currentDocuments, this.searchTokens);
-        }
+        };
     }
 
     public List<Document> getCurrentDocuments() {

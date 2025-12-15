@@ -228,12 +228,14 @@ public class Document extends ModelBase implements WikiModel, Linkable {
     @OneToMany(mappedBy = "document", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     @Fetch(value = FetchMode.SUBSELECT)
     private List<UnifiedTopic> unifiedTopics;
-
+    
     @Getter
     @Setter
     @OneToMany(cascade = CascadeType.ALL)
     @JoinColumn(name = "document_Id")
     private List<Image> images;
+
+    private String covered_text_layer;
 
     @Getter
     @OneToMany(
@@ -498,4 +500,19 @@ public class Document extends ModelBase implements WikiModel, Linkable {
                 .collect(Collectors.toList());
     }
 
+    public String getCoveredText_layer(){
+        return covered_text_layer;
+    };
+    
+    public void setCoveredText_layer(String tmp){;
+        // For this document -> check if its in a layer and return the name from this layer
+        // need document_id
+        // search for id in layers
+        // return all matching covered_texts
+        this.covered_text_layer = tmp;
+        
+
+    };
+        
+    
 }

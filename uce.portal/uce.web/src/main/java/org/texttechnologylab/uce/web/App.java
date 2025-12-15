@@ -255,7 +255,7 @@ public class App {
 
         logger.info("Javalin application setup done.");
 
-        int port = 4568;
+        int port = 4568; //4568
         if (SystemStatus.UceConfig.getSettings().getPort() != null) {
             port = SystemStatus.UceConfig.getSettings().getPort();
         }

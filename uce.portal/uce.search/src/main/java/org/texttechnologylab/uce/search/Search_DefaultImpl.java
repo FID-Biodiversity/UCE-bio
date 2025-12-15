@@ -130,6 +130,17 @@ public class Search_DefaultImpl implements Search {
                         "Search can't be created hence.", ex));
 
         if (documents == null) return null;
+
+        logger.info("SEARCH 1: " + documentSearchResult.getDocumentIds());
+        logger.info("SEARCH 2: " + documentSearchResult.getDocumentHits());
+        /*
+        logger.info("SEARCH 3: " + documentSearchResult.getSearchSnippets());
+        logger.info("SEARCH 4: " + documentSearchResult.getSearchRanks());
+        logger.info("SEARCH 5: " + documentSearchResult.getDocumentCount());
+        logger.info("SEARCH 6: " + documentSearchResult.getFoundNamedEntities());
+        logger.info("SEARCH 7: " + documentSearchResult.getFoundTaxons());
+        logger.info("SEARCH 8: " + documentSearchResult.getFoundTimes());
+         */
         searchState.setCurrentDocuments(documents);
         searchState.setCurrentDocumentHits(documentSearchResult.getDocumentHits());
         searchState.setDocumentIdxToSnippets(documentSearchResult.getSearchSnippets());
@@ -166,6 +177,7 @@ public class Search_DefaultImpl implements Search {
             }
             searchState.setFoundDocumentChunkEmbeddings(foundDocumentChunkEmbeddings);
         }
+
 
         return searchState;
     }
