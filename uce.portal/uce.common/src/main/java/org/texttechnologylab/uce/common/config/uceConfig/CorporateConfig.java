@@ -9,6 +9,7 @@ public class CorporateConfig {
     private ContactConfig contact;
     private String website;
     private String logo;
+    private String minilogo;
     private String name;
     private String primaryColor;
     private String secondaryColor;

@@ -58,6 +58,8 @@
     <script src="js/require.js"></script>
     <!--<script src="https://unpkg.com/@tweenjs/tween.js@^20.0.0/dist/tween.umd.js"></script>-->
     <title>${title}</title>
+
+    <link href="css/biofid-css.css" rel="stylesheet">
 </head>
 
 <body>
@@ -97,14 +99,30 @@
     <!-- this object must be set on any site we use within UCE -->
     <div id="prime-color-container" class="color-prime"></div>
 
-    <nav class="position-relative">
+    <nav class="position-relative top-menu">
 
-        <div class="container-fluid flexed align-items-center justify-content-evenly">
-            <div class="flexed h-100 pr-2">
-                <button class="btn switch-view-btn selected-nav-btn" data-id="landing">
-                    <img class="mb-0 logo" src="${uceConfig.getCorporate().getLogo()}">
-                </button>
-            </div>
+
+        <!-- Logo-image 
+            <div class="container-fluid flexed align-items-center justify-content-evenly">
+                <div class="flexed h-100 pr-2">
+                    <button class="btn switch-view-btn selected-nav-btn" data-id="landing">
+                        <img class="mb-0 logo" src="${uceConfig.getCorporate().getLogo()}">
+                    </button>
+                    -->
+
+        <!-- Logo-image -->
+            <div class="container-fluid flexed align-items-center justify-content-evenly">
+                <a class=" h-100 pr-2 navbar-brand  switch-view-btn selected-nav-btn"
+                        data-id="landing">
+                            <img class="d-none d-lg-inline logo"
+                                src="${uceConfig.getCorporate().getLogo()}"
+                                height="40">
+                            <img class="d-inline d-lg-none logo"
+                                src="${uceConfig.getCorporate().getMinilogo()}"
+                                height="28">
+                        </a>
+                
+
 
             <div class="flexed align-items-stretch">
                 <!-- system alive buttons -->
@@ -152,37 +170,110 @@
                 </div>
 
                 <!-- right side buttons -->
-                <div class="flexed align-items-center nav-container">
-                    <div class="flexed align-items-center nav-buttons">
-                        <a class="switch-view-btn btn text" data-id="landing" data-trigger="hover" data-toggle="popover"
-                            data-placement="bottom" data-content="Information"><i class="fas  fa-info color-prime"></i></a>
-                        <a class="switch-view-btn btn text" data-id="search" data-trigger="hover" data-toggle="popover"
-                           data-placement="bottom" data-content="Portal"><i class="fas fa-globe-europe color-prime"></i></a>
-                        <a class="switch-view-btn btn text" data-id="lexicon" data-trigger="hover" data-toggle="popover"
-                           data-placement="bottom" data-content="${languageResource.get("lexicon")}"><i
-                                    class="fas fa-atlas color-prime"></i></a>
-                        <a class="switch-view-btn btn text" data-id="timeline-map" data-trigger="hover"
-                           data-toggle="popover"
-                           data-placement="bottom" data-content="${languageResource.get("map")}"><i
-                                    class="fas fa-map-marked-alt color-prime"></i></a>
-                        <#if uceConfig.getSettings().getAnalysis().isEnableAnalysisEngine()>
-                            <a class="switch-view-btn btn text" data-id="analysis" data-trigger="hover"
-                               data-toggle="popover"
-                               data-placement="bottom" data-content="${languageResource.get("analysis")}"><i
-                                        class="fas fa-chart-pie color-prime"></i>
-                            </a>
-                        </#if>
-                        <a class="switch-view-btn btn text" data-id="team" data-trigger="hover" data-toggle="popover"
-                           data-placement="bottom" data-content="${languageResource.get("team")}"><i
-                                    class="fas fa-users color-prime"></i></a>
+                <!-- DESKTOP MENU -->
+                    <div class="d-none d-lg-flex align-items-center nav-container">
+
+                        <ul class="navbar-nav align-items-center ml-3">
+
+                            <li class="nav-item top-menu-item">
+                                <a class="nav-link switch-view-btn" data-id="landing">
+                                    <i class="fas fa-info color-prime"></i>
+                                </a>
+                            </li>
+
+                            <li class="nav-item top-menu-item">
+                                <a class="nav-link switch-view-btn" data-id="search">
+                                    <i class="fas fa-globe-europe color-prime"></i>
+                                </a>
+                            </li>
+
+                            <li class="nav-item top-menu-item">
+                                <a class="nav-link switch-view-btn" data-id="lexicon">
+                                    <i class="fas fa-atlas color-prime"></i>
+                                </a>
+                            </li>
+
+                            <li class="nav-item top-menu-item">
+                                <a class="nav-link switch-view-btn" data-id="timeline-map">
+                                    <i class="fas fa-map-marked-alt color-prime"></i>
+                                </a>
+                            </li>
+
+                            <#if uceConfig.getSettings().getAnalysis().isEnableAnalysisEngine()>
+                                <li class="nav-item top-menu-item">
+                                    <a class="nav-link switch-view-btn" data-id="analysis">
+                                        <i class="fas fa-chart-pie color-prime"></i>
+                                    </a>
+                                </li>
+                            </#if>
+
+                            <li class="nav-item top-menu-item">
+                                <a class="nav-link switch-view-btn" data-id="team">
+                                    <i class="fas fa-users color-prime"></i>
+                                </a>
+                            </li>
+                        </ul>
+
+                        <!-- LANGUAGE -->
+                        <form class="ml-3 mr-3">
+                            <select class="form-control form-control-sm rounded-0 switch-language-select color-prime bg-default">
+                                <option data-lang="en-EN">English</option>
+                                <option data-lang="de-DE">Deutsch</option>
+                            </select>
+                        </form>
                     </div>
 
-                    <select class="form-control bg-default rounded-0 color-prime border-right-0 large-font switch-language-select">
-                        <option data-lang="en-EN">Englisch</option>
-                        <option data-lang="de-DE">Deutsch</option>
-                    </select>
+                <!-- MOBILE DROPDOWN -->
+                    <div class="dropdown d-lg-none ml-auto d-flex align-items-center ">
+
+                        <button class="btn navbar-toggler dropdown-toggle navbar-light p-3"
+                                type="button"
+                                id="mobileMenuDropdown"
+                                data-toggle="dropdown"
+                                aria-haspopup="true"
+                                aria-expanded="false">
+                            <span class="navbar-toggler-icon"></span>
+                        </button>
+                    <div class="dropdown-menu dropdown-menu-right p-3"
+                        aria-labelledby="mobileMenuDropdown"
+                        style="min-width: 220px;">
+
+                        <a class="dropdown-item switch-view-btn text-center" data-id="landing">
+                            <i class="fas fa-info color-prime mr-2"></i> Information
+                        </a>
+
+                        <a class="dropdown-item switch-view-btn text-center" data-id="search">
+                            <i class="fas fa-globe-europe color-prime mr-2"></i> Portal
+                        </a>
+
+                        <a class="dropdown-item switch-view-btn text-center" data-id="lexicon">
+                            <i class="fas fa-atlas color-prime mr-2"></i> Lexicon
+                        </a>
+
+                        <a class="dropdown-item switch-view-btn text-center" data-id="timeline-map">
+                            <i class="fas fa-map-marked-alt color-prime mr-2"></i> Map
+                        </a>
+
+                        <#if uceConfig.getSettings().getAnalysis().isEnableAnalysisEngine()>
+                            <a class="dropdown-item switch-view-btn text-center" data-id="analysis">
+                                <i class="fas fa-chart-pie color-prime mr-2"></i> Analysis
+                            </a>
+                        </#if>
+
+                        <a class="dropdown-item switch-view-btn text-center" data-id="team">
+                            <i class="fas fa-users color-prime mr-2"></i> Team
+                        </a>
+
+                        <div class="dropdown-divider"></div>
+
+                        <form class="d-flex justify-content-center">
+                            <select class="form-control form-control-sm rounded-0 switch-language-select color-prime bg-default">
+                                <option data-lang="en-EN">English</option>
+                                <option data-lang="de-DE">Deutsch</option>
+                            </select>
+                        </form>
+                    </div>
                 </div>
-            </div>
 
             <#if uceConfig.authIsEnabled()>
                 <div class="ml-1">
