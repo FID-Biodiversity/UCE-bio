@@ -1,0 +1,47 @@
+.navbar-toggler {
+    width: 100%;
+}
+
+nav .logo {
+  height: 60px;
+  margin-left: 1rem;
+}
+
+.top-menu-item {
+  margin: 6px;
+  white-space: nowrap;
+  border: lightgrey 1px solid;
+  cursor: pointer;
+  width: 50px;
+  font-size: large;
+  border-radius: 0;
+  text-align: center;
+}
+
+.dropdown-menu .dropdown-item {
+    padding: 0.6rem 1rem;
+}
+
+.dropdown-menu i {
+    width: 20px;
+    text-align: center;
+}
+
+div .navbar-nav{
+    flex-direction: row;
+}
+
+.top-menu {
+    z-index: 6;
+}
+
+.sort-container {
+    position:static;
+}
+
+.sticky-bar.scrolled {
+    background-color: rgba(255, 255, 255, 0.95); /* or any color */
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+
+
