@@ -183,7 +183,7 @@
 
                             <li class="nav-item top-menu-item">
                                 <a class="nav-link switch-view-btn" data-id="search">
-                                    <i class="fas fa-globe-europe color-prime"></i>
+                                    <i class="fas fa-search color-prime"></i>
                                 </a>
                             </li>
 
@@ -243,7 +243,7 @@
                         </a>
 
                         <a class="dropdown-item switch-view-btn text-center" data-id="search">
-                            <i class="fas fa-globe-europe color-prime mr-2"></i> Portal
+                            <i class="fas fa-search color-prime mr-2"></i> Portal
                         </a>
 
                         <a class="dropdown-item switch-view-btn text-center" data-id="lexicon">
