@@ -278,6 +278,7 @@ public class App {
 
         // Logo
         SystemStatus.UceConfig.getCorporate().setLogo(convertConfigImageString(SystemStatus.UceConfig.getCorporate().getLogo()));
+        SystemStatus.UceConfig.getCorporate().setMinilogo(convertConfigImageString(SystemStatus.UceConfig.getCorporate().getMinilogo()));
 
         // Team Members
         for (var member : SystemStatus.UceConfig.getCorporate().getTeam().getMembers())
