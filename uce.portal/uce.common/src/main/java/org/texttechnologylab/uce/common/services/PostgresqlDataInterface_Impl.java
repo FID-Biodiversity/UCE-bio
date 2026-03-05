@@ -279,6 +279,46 @@ public final class PostgresqlDataInterface_Impl implements DataInterface {
         }));
     }
 
+public String getLabelCoveredTextFromID(Long annotationlink_id)
+        throws DatabaseOperationException, DocumentAccessDeniedException{
+
+    return executeOperationSafely(session ->
+        session.doReturningWork(connection -> {
+            try (var query_statement = connection.prepareStatement(
+                    "SELECT get_namedentity_text_by_link_fromm(?)")) {
+                query_statement.setLong(1, annotationlink_id);
+
+                try (var result = query_statement.executeQuery()) {
+                    if (result.next()) {
+                        return result.getString(1);
+                    }
+                    return ""; // no result found
+                }
+            }
+        })
+    );
+}
+
+public String getLocationCoveredTextFromID(Long annotationlink_id)
+        throws DatabaseOperationException, DocumentAccessDeniedException{
+
+    return executeOperationSafely(session ->
+        session.doReturningWork(connection -> {
+            try (var query_statement = connection.prepareStatement(
+                    "SELECT get_namedentity_text_by_link_too(?)")) {
+                query_statement.setLong(1, annotationlink_id);
+
+                try (var result = query_statement.executeQuery()) {
+                    if (result.next()) {
+                        return result.getString(1);
+                    }
+                    return ""; //No result found
+                }
+            }
+        })
+    );
+}
+
     public ArrayList<PointDto> getGeonameTimelineLinks(double minLng,
                                                        double minLat,
                                                        double maxLng,
@@ -288,7 +328,7 @@ public final class PostgresqlDataInterface_Impl implements DataInterface {
                                                        long corpusId,
                                                        int skip,
                                                        int take,
-                                                       String fromAnnotationTypeTable) throws DatabaseOperationException, DocumentAccessDeniedException {
+                                                       String fromAnnotationTypeTable) throws DatabaseOperationException, DocumentAccessDeniedException,IllegalArgumentException {
         return executeOperationSafely((session) -> session.doReturningWork((connection) -> {
             try (var storedProcedure = connection.prepareCall("{call uce_query_geoname_timeline_links" + "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)}")) {
                 storedProcedure.setDouble(1, minLng);
@@ -309,17 +349,20 @@ public final class PostgresqlDataInterface_Impl implements DataInterface {
                     pointDto.setId(result.getLong("id"));
                     pointDto.setAnnotationId(result.getLong("annotationId"));
                     pointDto.setAnnotationType(result.getString("annotationType"));
-                    pointDto.setLocationCoveredText(result.getString("locationcoveredtext"));
+                    pointDto.setLocationCoveredText(getLocationCoveredTextFromID(result.getLong("annotationId")));
+
                     pointDto.setLocation(result.getString("location"));
                     pointDto.setDateCoveredText(result.getString("datecoveredtext"));
                     var date = result.getDate("date");
                     pointDto.setDate(date != null ? date.toString() : null);
-                    pointDto.setLabel(result.getString("fromcoveredtext"));
+                    pointDto.setLabel(getLabelCoveredTextFromID(result.getLong("annotationId")));
                     pointDto.setLongitude(result.getDouble("lng"));
                     pointDto.setLatitude(result.getDouble("lat"));
                     points.add(pointDto);
                 }
                 return points;
+            } catch (DatabaseOperationException | DocumentAccessDeniedException | IllegalArgumentException e) {
+                throw new RuntimeException(e);
             }
         }));
     }
@@ -554,14 +597,15 @@ public final class PostgresqlDataInterface_Impl implements DataInterface {
     public List<Link> getLinksOfLinkableByType(long id, Class<? extends Linkable> linkableType, Class<? extends ModelBase> type) throws DatabaseOperationException, DocumentAccessDeniedException {
         return executeOperationSafely((session) -> {
             var criteria = session.createCriteria(type);
+            String type_name_short=linkableType.getSimpleName();
             criteria.add(Restrictions.or(
                     Restrictions.and(
-                            Restrictions.eq("fromId", id),
-                            Restrictions.eq("fromAnnotationType", linkableType.getName())
+                            Restrictions.eq("fromId", id), //
+                            Restrictions.ilike("fromAnnotationTypeTable",type_name_short) // case-insensitive
                     ),
                     Restrictions.and(
                             Restrictions.eq("toId", id),
-                            Restrictions.eq("toAnnotationType", linkableType.getName())
+                            Restrictions.ilike("toAnnotationTypeTable", type_name_short) // case-insensitive
                     )
             ));
             return criteria.list();
@@ -654,7 +698,8 @@ public final class PostgresqlDataInterface_Impl implements DataInterface {
                 var links = ExceptionUtils.tryCatchLog(
                         () -> getAllLinksOfLinkable(taxon.getId(), taxon.getClass(), List.of(AnnotationLink.class))
                                 .stream()
-                                .filter(l -> l.getLinkId().equals("context") && l.getToAnnotationType().equals(GeoName.class.getName())).toList(),
+                                .filter(l -> l.getLinkId().equals("context") && l.getToAnnotationTypeTable().equalsIgnoreCase(GeoName.class.getSimpleName())).toList(),
+                                //.filter(l -> l.getLinkId().equals("context") && (GeoName.class.getName()).contains(l.getToAnnotationTypeTable())).toList(),
                         (ex) -> { });
                 // Foreach taxa, fetch a possible geoname link.
                 if (links != null)

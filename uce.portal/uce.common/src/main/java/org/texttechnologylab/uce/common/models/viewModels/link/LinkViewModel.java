@@ -52,10 +52,10 @@ public class LinkViewModel {
                 Class<? extends Linkable> toClazz = null;
                 if (link instanceof DocumentLink) toClazz = Document.class;
                 else if (link instanceof DocumentToAnnotationLink docToAnno)
-                    toClazz = ReflectionUtils.getClassFromClassName(docToAnno.getToAnnotationType(), Linkable.class);
+                    toClazz = ReflectionUtils.getClassFromClassName(docToAnno.getToAnnotationTypeTable(), Linkable.class);
                 else if (link instanceof AnnotationToDocumentLink) toClazz = Document.class;
                 else if (link instanceof AnnotationLink annoLink)
-                    toClazz = ReflectionUtils.getClassFromClassName(annoLink.getToAnnotationType(), Linkable.class);
+                    toClazz = ReflectionUtils.getClassFromClassName(annoLink.getToAnnotationTypeTable(), Linkable.class);
                 final var finalTo = toClazz;
 
                 var linkable = db.getLinkable(link.getToId(), finalTo);
