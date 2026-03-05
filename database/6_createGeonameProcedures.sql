@@ -81,11 +81,11 @@ CREATE OR REPLACE FUNCTION uce_query_geoname_timeline_links(
 RETURNS TABLE (
     lat DOUBLE PRECISION,
     lng DOUBLE PRECISION,
-    fromcoveredtext TEXT,
+    -- fromcoveredtext TEXT,  --kp
     id BIGINT,
     annotationId BIGINT,
     annotationType TEXT,
-    locationcoveredtext TEXT,
+    -- locationcoveredtext TEXT,  --kp
     location TEXT,
     date DATE,
     datecoveredtext TEXT
@@ -96,11 +96,11 @@ BEGIN
     SELECT
         ST_Y(g.location_geom) AS lat,
         ST_X(g.location_geom) AS lng,
-        al.fromcoveredtext,
+        -- al.fromcoveredtext, --kp
         al.id AS id,
         al.fromid AS annotationId,
-        al.fromannotationtype AS annotationType,
-        al.tocoveredtext AS locationcoveredtext,
+        al.fromannotationtypetable AS annotationType,
+        -- al.tocoveredtext AS locationcoveredtext,  --kp
         g.name AS location,
         t.date,
         t.coveredtext AS datecoveredtext

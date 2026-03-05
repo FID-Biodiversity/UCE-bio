@@ -1909,10 +1909,21 @@ public class Importer {
                         annoLink.setToId(context.getId());
                         annoLink.setFromAnnotationTypeTable(ReflectionUtils.getTableAnnotationName(anno.getClass()));
                         annoLink.setToAnnotationTypeTable(ReflectionUtils.getTableAnnotationName(context.getClass()));
-                        annoLink.setFromAnnotationType(anno.getClass().getName());
-                        annoLink.setToAnnotationType(context.getClass().getName());
-                        annoLink.setFromCoveredText(anno.getCoveredText());
-                        annoLink.setToCoveredText(context.getCoveredText());
+
+                        annoLink.setFromAnnotationType("");
+                        annoLink.setToAnnotationType("");
+                        // annoLink.setFromAnnotationType(anno.getClass().getName());
+                        // annoLink.setToAnnotationType(context.getClass().getName());
+                        /* if (annoLink.getToAnnotationType().contains("GeoName")){
+                            annoLink.setFromCoveredText(anno.getCoveredText());
+                            annoLink.setToCoveredText(context.getCoveredText());
+                        }
+                        else{
+                            annoLink.setFromCoveredText("");
+                            annoLink.setToCoveredText("");
+                        };*/
+                        annoLink.setFromCoveredText("");
+                        annoLink.setToCoveredText("");
                         annoLink.setFromBegin(anno.getBegin());
                         annoLink.setToBegin(context.getBegin());
                         annoLink.setFromEnd(anno.getEnd());
