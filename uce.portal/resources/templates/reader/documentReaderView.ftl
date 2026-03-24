@@ -81,10 +81,12 @@
                 <#list renderModes as mode>
                     <#assign modeKey = mode.key()>
                     <#assign modeName = mode.name()>
+                    <#if !modeKey=="document_reader_pdf_view">
                     <a class="view-mode-link<#if modeKey == activeMode> active</#if>"
                        href="?id=${document.id}&mode=${modeKey}">
                         ${modeName}
                     </a>
+                    </#if>
                 </#list>
             </nav>
         </#if>
@@ -122,8 +124,9 @@
 <#else>
 
     <div class="site-container with-view-nav">
-
-        <#if renderModes?has_content>
+    <!-- only show this, if there are more options than  "document_reader_pdf_view", which is useless in BIOfid -->
+        <#assign filteredrenderModes = renderModes?filter(o -> o.key() != "document_reader_pdf_view")>
+        <#if filteredrenderModes?has_content>
             <button class="view-mode-toggle" type="button" aria-label="Toggle Views">
                 ☰
             </button>
@@ -186,7 +189,7 @@
                             <div class="text-center flexed align-items-center justify-content-around w-100">
                                 <div class="flexed align-items-center">
                                     <a class="header-btn open-wiki-page color-prime" data-wid="${document.getWikiId()}">
-                                        <i class="large-font m-0 fab fa-wikipedia-w"></i>
+                                        <i class="large-font m-0 fab fa-medium-m"></i>
                                     </a>
                                     <#if document.getMetadataTitleInfo().getScrapedUrl()?has_content>
                                         <a class="header-btn open-metadata-url-btn m-0"
@@ -216,7 +219,7 @@
                                         <a class="btn bg-lightgray rounded light-border xsmall-font open-wiki-page
                                         align-items-center flexed hoverable"
                                         data-wid="${document.getWikiId()}">
-                                            <i class="fab fa-wikipedia-w bg-light light-border rounded p-1 mr-2"></i>
+                                            <i class="fab fa-medium-m bg-light light-border rounded p-1 mr-2"></i>
                                             <span class="font-italic text-secondary"
                                                 style="margin-top: 3px">${languageResource.get("showUceMetadata")}...</span>
                                         </a>
@@ -318,8 +321,9 @@
                                         <div class="found-searchtokens-list"></div>
                                     </div>
                                 </#if>
-
-                                <div class="group-box topics-box">
+                                
+                                <!-- if there are not topics at all, the whole box is getting hidden -->
+                                <div class="group-box topics-box topic-wrapper-box">
                                     <div class="key-topics-title d-flex align-items-center justify-content-between mb-3">
                                         <span class="title mx-auto" style="flex:1; text-align:center;">${languageResource.get("topics")}</span>
                                         <i class="ml-2 fas fa-cog key-topics-settings" title="Settings"></i>
@@ -374,10 +378,12 @@
 
                                 <div class="viz-bottom-nav">
                                     <button class="viz-nav-btn active" data-target="#viz-panel-1">${languageResource.get("semanticDensity")}</button>
+                                    <!-- 
                                     <button class="viz-nav-btn" data-target="#viz-panel-2">${languageResource.get("topicEntity")}</button>
                                     <button class="viz-nav-btn" data-target="#viz-panel-3">${languageResource.get("topicLandscape")}</button>
                                     <button class="viz-nav-btn" data-target="#viz-panel-4">${languageResource.get("topicSimilarity")}</button>
                                     <button class="viz-nav-btn" data-target="#viz-panel-5">${languageResource.get("sentenceTopicFlow")}</button>
+                                    -->
                                 </div>
 
                             </div>

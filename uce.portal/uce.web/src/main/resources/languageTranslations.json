@@ -199,6 +199,10 @@
     "de-DE": "Dokument-Reader öffnen",
     "en-EN": "Open Document-Reader"
   },
+  "openWiki": {
+    "de-DE": "Wiki öffnen",
+    "en-EN": "Open Wiki"
+  },
   "loading": {
     "de-DE": "Lädt",
     "en-EN": "Loading"

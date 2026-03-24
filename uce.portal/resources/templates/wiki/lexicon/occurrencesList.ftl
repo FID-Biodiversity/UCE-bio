@@ -8,7 +8,7 @@
                 <#if annotation?has_content && annotation.getWikiId?exists && annotation.getWikiId()?has_content>
                     <a class="rounded-a open-wiki-page" data-wid="${annotation.getWikiId()}"
                        data-wcovered="${annotation.getCoveredText()}">
-                        <i class="color-prime fab fa-wikipedia-w"></i>
+                        <i class="color-prime fab fa-medium-m"></i>
                     </a>
                 <#else>
                     <a class="rounded-a open-document"

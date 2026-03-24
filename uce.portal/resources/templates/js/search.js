@@ -33,8 +33,9 @@ function createHistogramData(data, bins) {
     }
 
     const labels = buckets.map((_, index) => {
-        const start = (min + index * bucketSize).toFixed(3)
-        const end = (min + (index + 1) * bucketSize).toFixed(3)
+        // as we only use publication year, and this needs no float-values, we just round off
+        const start =  Math.floor((min + index * bucketSize))//.toFixed(3)
+        const end =  Math.floor((min + (index + 1) * bucketSize))//.toFixed(3)
         return start.toString() + " - " + end.toString()
     })
 
@@ -57,6 +58,7 @@ function updateSearchVizualization() {
     while (selectElem.firstChild) {
         selectElem.removeChild(selectElem.lastChild)
     }
+    /*
     Object.keys(data).sort().forEach(category => {
         const option = document.createElement('option')
         option.value = category
@@ -65,7 +67,42 @@ function updateSearchVizualization() {
             option.selected = true
         }
         selectElem.appendChild(option)
-    })
+    })*/
+   const categories = Object.keys(data).sort()
+
+    // handle single option case (no dropdown menu)
+    if (categories.length === 1) {
+        const value = categories[0]
+
+        window.searchVizualization.settings.selectedFeature = value
+
+        selectElem.style.display = 'none'
+
+        let text = document.getElementById('search-viz-selected-feature-text')
+        if (!text) {
+            text = document.createElement('button')
+            text.id = 'search-viz-selected-feature-text'
+            text.className = 'form-control-plaintext border border-1 pl-2'
+            selectElem.parentNode.appendChild(text)
+        }
+
+        text.textContent = value
+
+    } else { // normal behaviour with dropdown menu
+        selectElem.style.display = ''
+
+        categories.forEach(category => {
+            const option = document.createElement('option')
+            option.value = category
+            option.textContent = category
+
+            if (category === selectedFeature) {
+                option.selected = true
+            }
+
+            selectElem.appendChild(option)
+        })
+    }
 
     const chartElem = document.getElementById('search-results-visualization-graph')
     while (chartElem.firstChild) {
@@ -322,6 +359,7 @@ $('body').on('click', '.search-result-container .page-btn', function () {
     const page = $(this).data('page');
     handleSwitchingOfPage(page);
     $(this).addClass('current-page');
+    $('html,body').scrollTop(0);
 })
 
 $('body').on('click', '.search-result-container .next-page-btn', function () {
@@ -332,6 +370,7 @@ $('body').on('click', '.search-result-container .next-page-btn', function () {
     if ($(this).data('direction') === "+") newPage += 2;
     if (newPage <= 0 || newPage > max) return;
     handleSwitchingOfPage(newPage);
+    $('html,body').scrollTop(0);
 })
 
 async function handleSwitchingOfPage(page) {

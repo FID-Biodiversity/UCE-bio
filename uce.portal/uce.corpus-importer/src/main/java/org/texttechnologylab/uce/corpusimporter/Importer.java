@@ -587,8 +587,6 @@ public class Importer {
                 logger.info("Setting full text done.");
             }
 
-            setMetadataTitleInfo(document, jCas, corpusConfig);
-
             if (corpusConfig.getOther().isEnableS3Storage()) {
                 var fileExtension = StringUtils.getFileExtension(filePath);
                 var contentType = StringUtils.getContentTypeByExtension(fileExtension);
@@ -604,6 +602,8 @@ public class Importer {
                 ExceptionUtils.tryCatchLog(
                         () -> setUceMetadata(document, jCas, corpus.getId()),
                         (ex) -> logImportWarn("This file should have contained UceMetadata annotations, but selecting them caused an error.", ex, filePath));
+
+            setMetadataTitleInfo(document, jCas, corpusConfig); //moved because it uses UceMetadata as a possible source
 
             if (corpusConfig.getAnnotations().isSentence())
                 ExceptionUtils.tryCatchLog(
@@ -1002,6 +1002,21 @@ public class Importer {
                     logger.warn("Tried extracting DocumentAnnotation type, it caused an error. Import will be continued as usual.");
                 }
             }
+            else {
+                // Get MetadataTitleInfo from document UceMetadata
+                try {
+                    String author = document.getUceMetadata().stream().filter(data -> "author".equals(data.getKey())).findFirst().map(UCEMetadata::getValue).orElse("");
+                    author =org.apache.commons.lang3.StringEscapeUtils.unescapeJava(author);
+
+                    metadataTitleInfo.setPublished(document.getUceMetadata().stream().filter(data -> "publication_year".equals(data.getKey())).findFirst().map(UCEMetadata::getValue).orElse(""));
+                    metadataTitleInfo.setAuthor(author);
+                } catch (Exception ex) {
+                    logger.warn("Tried extracting MetadataTitleInfo from UceMetadata, but it caused an error. Import will be continued as usual.");
+                }
+
+            }
+
+            
         }
         document.setMetadataTitleInfo(metadataTitleInfo);
     }

@@ -8,7 +8,7 @@
 
         <header class="pl-4 pr-4 pt-3 pb-3 flexed align-items-center justify-content-between">
             <a class="w-rounded-btn m-0 open-wiki-page" data-wid="-" data-wcovered="-" onclick="$(this).closest('.wiki-metadata-expanded-view').fadeOut(25)">
-                <i class="color-prime fab fa-wikipedia-w"></i>
+                <i class="color-prime fab fa-medium-m"></i>
             </a>
             <h5 class="mb-0 text-dark title"></h5>
             <a class="w-rounded-btn m-0" onclick="$(this).closest('.wiki-metadata-expanded-view').fadeOut(25)">
@@ -23,13 +23,14 @@
 </div>
 
 <div class="wiki-page-modal wiki-page-modal-minimized">
+    <!-- Removal of hovering W-Button
     <div class="backdrop" onclick="$('.wiki-page-modal').addClass('wiki-page-modal-minimized')"></div>
 
-    <div class="minimized-content" onclick="$('.wiki-page-modal').removeClass('wiki-page-modal-minimized')">
+     <div class="minimized-content" onclick="$('.wiki-page-modal').removeClass('wiki-page-modal-minimized')">
         <h5 class="color-prime mb-0 mt-1">
-            <i class="fab fa-wikipedia-w xlarge-font"></i>
+            <i class="fab fa-medium-m xlarge-font"></i>
         </h5>
-    </div>
+    </div> -->
 
     <div class="content bg-default">
 
@@ -39,12 +40,12 @@
                     <a class="w-rounded-btn mr-2 go-back-btn">
                         <i class="fas fa-angle-left"></i>
                     </a>
-                    <a class="w-rounded-btn mr-2">
+                    <!-- <a class="w-rounded-btn mr-2">
                         <i class="fas fa-home"></i>
-                    </a>
+                    </a> -->
                 </div>
                 <h5 class="color-prime mb-0 mr-2">
-                    <i class="fab fa-wikipedia-w xlarge-font"><span class="xlarge-font">iki</span></i>
+                    <span class="xlarge-font">Metadaten</span>
                 </h5>
                 <div class="flexed align-items-center">
                     <!-- open full -->

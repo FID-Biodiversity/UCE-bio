@@ -15,12 +15,19 @@
                         <#assign layout = "">
                     </#if>
                     <#if has_value>
+                    
                         <div class="item-container ${layout}">
                             <div class="flexed align-items-center justify-content-between">
                                 <div class="flexed align-items-center">
                                     <i class="fas fa-key xsmall-font mr-2 text"></i>
                                     <#assign k_class = "">
-                                    <label class="key mb-0 mr-2 color-prime">${item.getKey()!''}:</label>
+                                    <label class="key mb-0 mr-2 color-prime">
+                                    ${item.getKey()!''}
+                                    <#if item.getKey()=="given_name" || item.getKey()=="family_name" >
+                                        of author 
+                                    </#if>
+                                    :
+                                    </label>
                                 </div>
                                 <div>
                                     <#if is_long_string>
