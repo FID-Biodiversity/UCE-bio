@@ -233,49 +233,57 @@ async function loadDocumentTopics() {
     $('.topics-loading').hide();
 
     const topicArray = sortedTopicArray();
-    if (topicSettings.colorMode === 'gradient') {
-
-        // Find max and min for normalization across ALL topics
-        const maxFreq = topicArray.length > 0 ? topicArray[0].frequency : 1;
-        const minFreq = topicArray.length > 0 ? topicArray[topicArray.length - 1].frequency : 0;
-        const freqRange = maxFreq - minFreq;
-
-        // Create color mapping for ALL topics
-        topicArray.forEach(function (topic) {
-            const normalizedFreq = freqRange > 0 ?
-                (topic.frequency - minFreq) / freqRange : 1;
-
-            topicColorMap[topic.label] = window.graphVizHandler.getColorForWeight(normalizedFreq, hexToRgb(topicSettings.gradientStartColor), hexToRgb(topicSettings.gradientEndColor));
-
-
-        });
-    }
-
-    // Take top N topics for display based on settings
-    const topTopics = topicArray.slice(0, topicSettings.topicCount);
-
-    if (topTopics.length > 0) {
-        let html = '';
-
-        // Generate HTML for each top topic
-        topTopics.forEach(function (topic) {
-            html += '<div class="topic-item">' +
-                '<div class="topic-tag" data-topic="' + topic.label + '" data-frequency="' + topic.frequency + '" style="background-color: ' + topicColorMap[topic.label] + '">' +
-                '<span>' + topic.label + '</span>' +
-                '</div>' +
-                '</div>';
-        });
-
-        $('.document-topics-list').html(html);
-        attachTopicClickHandlers();
-
-        if (typeof updateMinimapMarkers === 'function') {
-            setTimeout(updateMinimapMarkers, 500);
-        }
-    } else {
-        $('.document-topics-list').html('<p>No topics found in this document.</p>');
-        // Hide the minimap since there are no topics
+    if (topicArray.length === 0) {
+        // if there are not topics at all, the whole box is getting hidden
+        const topic_wrapper_box = document.querySelector('.topic-wrapper-box');
+        topic_wrapper_box.style.display = 'none';
         $('.scrollbar-minimap').hide();
+    }
+    else {
+        if (topicSettings.colorMode === 'gradient') {
+
+            // Find max and min for normalization across ALL topics
+            const maxFreq = topicArray.length > 0 ? topicArray[0].frequency : 1;
+            const minFreq = topicArray.length > 0 ? topicArray[topicArray.length - 1].frequency : 0;
+            const freqRange = maxFreq - minFreq;
+
+            // Create color mapping for ALL topics
+            topicArray.forEach(function (topic) {
+                const normalizedFreq = freqRange > 0 ?
+                    (topic.frequency - minFreq) / freqRange : 1;
+
+                topicColorMap[topic.label] = window.graphVizHandler.getColorForWeight(normalizedFreq, hexToRgb(topicSettings.gradientStartColor), hexToRgb(topicSettings.gradientEndColor));
+
+
+            });
+        }
+
+        // Take top N topics for display based on settings
+        const topTopics = topicArray.slice(0, topicSettings.topicCount);
+
+        if (topTopics.length > 0) {
+            let html = '';
+
+            // Generate HTML for each top topic
+            topTopics.forEach(function (topic) {
+                html += '<div class="topic-item">' +
+                    '<div class="topic-tag" data-topic="' + topic.label + '" data-frequency="' + topic.frequency + '" style="background-color: ' + topicColorMap[topic.label] + '">' +
+                    '<span>' + topic.label + '</span>' +
+                    '</div>' +
+                    '</div>';
+            });
+
+            $('.document-topics-list').html(html);
+            attachTopicClickHandlers();
+
+            if (typeof updateMinimapMarkers === 'function') {
+                setTimeout(updateMinimapMarkers, 500);
+            }
+        } else {
+            $('.document-topics-list').html('<p>No topics found in this document.</p>');
+            // Hide the minimap since there are no topics
+            $('.scrollbar-minimap').hide();
+        }
     }
 }
 
@@ -937,9 +945,10 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
             setTimeout(updateFloatingUIPositions,500) ;
             currentSelectedTopic = null;
             sideBar.classList.remove('visualization-expanded');
-            $('.scrollbar-minimap').show();
+            $('.scrollbar-minimap').hide();
         }
         if (targetId === 'visualization-tab') {
+            $('.scrollbar-minimap').hide();
             setTimeout(() => renderTemporalExplorer('vp-1'), 500);
             $('.viz-nav-btn').removeClass('active');
             $('.viz-nav-btn').first().addClass('active');

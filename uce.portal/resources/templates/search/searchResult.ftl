@@ -113,16 +113,19 @@
 
                 <!-- search layers and such -->
                 <div class="flexed align-items-center justify-content-between">
+                
                     <div class="flexed align-items-center">
+                    <!-- only showing the Primary Search LAyer and Embedding option if it exists-->
+                    <#if searchState.getFoundDocumentChunkEmbeddings()?exists>
                         <a class="btn switch-search-layer-result-btn text hoverable selected"
                            data-layer="${searchState.getPrimarySearchLayer()}">
                             <i class="fas fa-search mr-1"></i> ${searchState.getPrimarySearchLayer()}</a>
-                        <#if searchState.getFoundDocumentChunkEmbeddings()?exists>
+                        
                             <a class="btn switch-search-layer-result-btn text hoverable" data-layer="EMBEDDING">
                                 <i class="fab fa-searchengin mr-1"></i> Embedding</a>
-                        </#if>
+                     </#if>   
                     </div>
-
+                
                     <div class="flexed">
                         <div class="flexed align-items-center w-100">
                             <p class="mb-0 mr-1">Published</p>

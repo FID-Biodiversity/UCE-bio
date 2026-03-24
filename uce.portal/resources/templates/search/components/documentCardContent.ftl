@@ -47,9 +47,14 @@
                                data-id="${document.getId()?string?replace('.', '')?replace(',', '')}">
                                 <i class="m-0 fas fa-globe-europe"></i></a>
                         </#if>
-                        <a class="title-btn open-wiki-page color-prime" data-trigger="hover" data-toggle="popover"
-                           data-wcovered="" data-wid="${document.getWikiId()}">
-                            <i class="m-0 fab fa-wikipedia-w"></i></a>
+                        <a class="title-btn open-wiki-page color-prime" 
+                            data-trigger="hover" 
+                            data-toggle="popover"
+                            data-wcovered="" 
+                            data-placement="top" 
+                            data-content="${languageResource.get("openWiki")}" 
+                            data-wid="${document.getWikiId()}">
+                            <i class="m-0 fab fa-medium-m"></i></a>
                         <a class="title-btn open-document color-prime" data-trigger="hover" data-toggle="popover"
                            data-placement="top"
                            data-content="${languageResource.get("openDocumentReader")}"

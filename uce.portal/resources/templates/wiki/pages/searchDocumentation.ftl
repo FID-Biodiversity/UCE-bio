@@ -25,7 +25,7 @@
                 <ul>
                     <li>
                         <label class="color-secondary font-weight-bold font-italic">"" <i
-                                    class="text">(JOIN)</i></label>
+                                    class="text">(String Search/JOIN)</i></label>
                         <div>
                             <p class="text mb-1">Ensures that multi-token phrases remain intact within the search query
                                 under
@@ -34,7 +34,7 @@
                             <div class="flexed align-items-center">
                                 <label class="mb-0 mr-2">Example:</label>
                                 <p class="w-100 p-2 mr-2 rounded mb-0 font-italic bg-default text light-border">
-                                    <b class="color-secondary">"</b>Bellis Perennis<b class="color-secondary">"</b>
+                                    <b class="color-secondary">"</b>Bellis perennis<b class="color-secondary">"</b>
                                 </p>
                             </div>
                         </div>
@@ -104,7 +104,7 @@
                 <ul>
                     <li>
                         <label class="color-secondary font-weight-bold font-italic">'' <i
-                                    class="text">(JOIN)</i></label>
+                                    class="text">(String search/JOIN)</i></label>
                         <div>
                             <p class="text mb-1">Ensures that multi-token phrases remain intact within the search query
                                 under
@@ -113,10 +113,10 @@
                             <div class="flexed align-items-center">
                                 <label class="mb-0 mr-2">Examples:</label>
                                 <p class="w-100 p-2 mr-2 rounded mb-0 font-italic bg-default text light-border">
-                                    <b class="color-secondary">'</b>Bellis Perennis<b class="color-secondary">'</b>
+                                    <b class="color-secondary">'</b>Bellis perennis<b class="color-secondary">'</b>
                                 </p>
                                 <p class="w-100 p-2 rounded mb-0 bg-default text light-border">
-                                    <i>Bellis Perennis</i> <i class="ml-1 mr-1 fas fa-long-arrow-alt-right"></i> <span
+                                    <i>Bellis perennis</i> <i class="ml-1 mr-1 fas fa-long-arrow-alt-right"></i> <span
                                             class="text-danger">Syntax Error</span>
                                 </p>
                             </div>
@@ -168,7 +168,7 @@
 
                     <li class="mt-2">
                         <label class="color-secondary font-weight-bold font-italic">:* <i
-                                    class="text">(PREFIX)</i></label>
+                                    class="text">(Truncation/ PREFIX)</i></label>
                         <div>
                             <p class="text mb-1">Finds all words that start with a specific prefix.</p>
                             <div class="flexed align-items-center">
@@ -199,7 +199,15 @@
                                 BY)</i></label>
                         <div>
                             <p class="text mb-1">Finds instances where one term is followed by another within a specific
-                                range.</p>
+                                range.
+                                 <ul>
+                                    <li class="text"><b class="color-secondary"> <-> </b> =  No words between the terms </li>
+                                     <li class="text"><b class="color-secondary"> <1> </b> = Up tp one word between the terms </li>
+                                     <li class="text"><b class="color-secondary"> <10> </b> = Up to 10 words between the terms </li>
+                                     <li>... </li>
+
+                                 </ul>
+                                </p>
                             <div class="flexed align-items-center">
                                 <label class="mb-0 mr-2">Examples:</label>
                                 <p class="w-100 p-2 rounded mb-0 font-italic bg-default text light-border mr-2">
@@ -234,10 +242,10 @@
                     The enrichment option enables the integration of ontology data into the search query.
                     When activated, the query is decomposed into its distinct components, and for each component,
                     the underlying ontology is examined for alternative names, synonyms, and taxonomic hierarchy.
-                    If relevant alternatives are found, they are incorporated into the query using Pro Mode's syntax.
+                    In order to toggle activation status, click the box under the search bar (when extended)
                 </p>
                 <div class="alert alert-danger light-border block-text small-font p-2 mt-2 mb-0" role="alert">
-                    Requires <b>Pro-Mode</b> to be activated and may impact search performance.
+                    While this feature works in Base-Mode, searching for taxonomic hierarchies requires <b>Pro-Mode</b> to be activated and may impact search performance.
                 </div>
                 <div class="expanded-content mt-3 display-none">
 
@@ -254,9 +262,9 @@
                             <div class="flexed align-items-center">
                                 <label class="mb-0 mr-2">Example:</label>
                                 <p class="w-100 p-2 rounded mb-0 bg-default text light-border">
-                                    <i>'Bellis Perennis' & Germany</i>
+                                    <i>''Bellis perennis' & Deutschland</i>
                                     <i class="fas fa-long-arrow-alt-right ml-1 mr-1"></i>
-                                    <span class="color-prime">( 'Bellis Perennis' | 'Daisy' | 'Gänseblümchen' | <i>[...]</i> ) & Germany</span>
+                                    <span class="color-prime">( 'Bellis perennis' | 'Daisy' | 'Gänseblümchen' | <i>[...]</i> ) & Deutschland</span>
                                 </p>
                             </div>
                         </div>
@@ -322,30 +330,32 @@
                         </div>
                     </div>
 
-                    <!-- GeoName Commands -->
+                    <!-- GeoNames Commands -->
                     <div class="group-box">
-                        <label class="color-secondary font-weight-bold">GeoName Commands
+                        <label class="color-secondary font-weight-bold">GeoNames Commands
                             <i class="text">&lt;COMMAND&gt;::&lt;DESCRIPTION&gt;</i></label>
                         <div>
                             <p class="text">
-                                GeoName Commands allow users to embed locations of specific types and areas within the
+                                GeoNames Commands allow users to embed locations of specific types and areas within the
                                 search query using
                                 a predefined syntax. These commands are resolved with relevant data for the query.
                             </p>
                             <ul>
+                                <!--
                                 <li class="mt-2">
                                     <label class="color-secondary font-weight-bold font-italic">LOC:: <i
                                                 class="text">&lt;FEATURE_CLASS&gt;.&lt;FEATURE_CODE&gt;</i></label>
                                     <div>
                                         <p class="text mb-1">
-                                            The LOCATION command uses GeoName's <a
+                                            The LOCATION command uses GeoNames' <a
                                                     href="https://www.geonames.org/export/codes.html" target="_blank">feature
                                                 system</a>.
-                                            For example, <i class="color-prime">LOC::H.CNL</i> retrieves all locations
-                                            that have been imported
-                                            with the corpus, that belong to the GeoName feature class <i>H</i> (streams,
+                                            For example, <i class="color-prime">LOC::H.CNL</i> retrieves all annotations of the type 'locations'
+                                            that are annotated within the corpus
+                                             and belong to the GeoNames feature class <i>H</i> (streams,
                                             lakes, ...)
                                             and specifically to the feature code CNL (canals).
+                                        Then it searches for all publications, which contain these location-annotations.
                                         </p>
                                         <div class="flexed align-items-center">
                                             <label class="mb-0 mr-2">Example:</label>
@@ -373,6 +383,7 @@
                                         </p>
                                     </div>
                                 </li>
+                                -->
                                 <li class="mt-2">
                                     <label class="color-secondary font-weight-bold font-italic">R:: <i
                                                 class="text">lng=&lt;LONGITUDE&gt;; lat=&lt;LATITUDE&gt;; r=&lt;RADIUS&gt;</i></label>
@@ -405,6 +416,7 @@
                     </div>
 
                     <!-- Time Commands -->
+                    <!--
                     <div class="group-box">
                         <label class="color-secondary font-weight-bold">Time Commands
                             <i class="text">&lt;CODE&gt;::&lt;VALUE&gt;</i></label>
@@ -468,6 +480,7 @@
                             </ul>
                         </div>
                     </div>
+                    -->
 
                     <div class="alert alert-danger light-border block-text small-font p-2 mt-2 mb-0"
                          role="alert">
@@ -504,7 +517,7 @@
                 than the entire corpus.
             </p>
             <div class="alert alert-danger light-border block-text small-font p-2 mt-2 mb-0" role="alert">
-                Requires the selected corpus to contain annotations of type Taxon, Time, or GeoName Location.
+                Requires the selected corpus to contain annotations of type Taxon, Time, or GeoNames Location.
                 If the corpus lacks all of these annotations, this function will not be available.
             </div>
             <div class="expanded-content mt-3 display-none">
