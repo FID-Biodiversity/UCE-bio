@@ -129,7 +129,14 @@
                                         <#list lexiconizableAnnotations as annotation>
                                             <div class="col-md-12 p-1 m-0">
                                                 <div class="annotation-filter bg-default">
-                                                    <label class="mb-0 mr-1">${annotation.getSimpleName()}</label>
+                                                    <label class="mb-0 mr-1"> 
+                                                        <!-- as i dont want to break other functions which rely on "GeoName" as SimpleName, 
+                                                        i change the name only here, but not the function for annotationtype GeoName -->
+                                                        <#assign simpleName= annotation.getSimpleName()>
+                                                        <#if simpleName=="GeoName">GeoNames    
+                                                        <#else> ${simpleName} 
+                                                        </#if>                                                    
+                                                    </label>
                                                     <input class="ml-1" checked type="checkbox"
                                                            onchange="window.wikiHandler.handleLexiconAnnotationFiltersChanged($(this))"/>
                                                 </div>
