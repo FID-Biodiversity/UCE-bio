@@ -192,16 +192,16 @@
     "en-EN": "Times"
   },
   "openTaxonomyDist": {
-    "de-DE": "3D-Taxonverteilung öffnen",
-    "en-EN": "Open 3D-Taxonomy Distribution"
+    "de-DE": "Geovisualisierung öffnen",
+    "en-EN": "Open Geovisualization"
   },
   "openDocumentReader": {
     "de-DE": "Dokument-Reader öffnen",
     "en-EN": "Open Document-Reader"
   },
   "openWiki": {
-    "de-DE": "Wiki öffnen",
-    "en-EN": "Open Wiki"
+    "de-DE": "Metadaten anzeigen",
+    "en-EN": "Show Metadata"
   },
   "loading": {
     "de-DE": "Lädt",

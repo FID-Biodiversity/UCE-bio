@@ -344,12 +344,12 @@
     margin-bottom: 2px;
 }
 
-.wiki-page .taxon-alt-names label:hover {
+/* .wiki-page .taxon-alt-names label:hover {
     cursor: pointer;
     text-decoration: underline;
     color: var(--prime);
     transition: 0.15s;
-}
+}*/
 
 .wiki-page #wiki-taxon-occurrences-map {
     height: 500px;
