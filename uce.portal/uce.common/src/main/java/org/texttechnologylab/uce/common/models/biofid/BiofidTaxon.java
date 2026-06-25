@@ -46,6 +46,7 @@ public class BiofidTaxon extends UIMAAnnotation implements Cloneable {
 
     @Setter
     @Getter
+    @Column(columnDefinition = "TEXT")
     private String primaryName;
 
     @Getter
@@ -54,10 +55,12 @@ public class BiofidTaxon extends UIMAAnnotation implements Cloneable {
 
     @Getter
     @Setter
+    @Column(columnDefinition = "TEXT")
     private String scientificName;
 
     @Getter
     @Setter
+    @Column(columnDefinition = "TEXT")
     private String cleanedScientificName;
 
     @Getter
@@ -91,6 +94,7 @@ public class BiofidTaxon extends UIMAAnnotation implements Cloneable {
 
     @Getter
     @Setter
+    @Column(columnDefinition = "TEXT")
     private String author;
 
     @Getter

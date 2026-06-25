@@ -23,10 +23,13 @@
                                     <#assign k_class = "">
                                     <label class="key mb-0 mr-2 color-prime">
                                     ${item.getKey()!''}
-                                    <#if item.getKey()=="given_name" || item.getKey()=="family_name" >
-                                        of author 
+                                     <#assign item_key_has_value = item.getKey()?? && item.getKey()?has_content>
+                                    <#if item_key_has_value>
+                                        <#if item.getKey()=="given_name" || item.getKey()=="family_name" >
+                                                of author 
+                                            </#if>
+                                        :
                                     </#if>
-                                    :
                                     </label>
                                 </div>
                                 <div>
