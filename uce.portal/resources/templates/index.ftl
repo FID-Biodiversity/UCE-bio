@@ -112,8 +112,8 @@
 
         <!-- Logo-image -->
             <div class="container-fluid flexed align-items-center justify-content-evenly">
-                <a class=" h-100 pr-2 navbar-brand  switch-view-btn selected-nav-btn"
-                        data-id="landing">
+                <a class=" h-100 pr-2 navbar-brand  selected-nav-btn" href="https://biofid.de" target="_blank"
+                        >
                             <img class="d-none d-lg-inline logo"
                                 src="${uceConfig.getCorporate().getLogo()}"
                                 height="40">

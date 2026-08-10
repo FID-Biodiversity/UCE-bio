@@ -80,7 +80,7 @@ public class EnrichedSearchQuery {
 
     public EnrichedSearchQuery parse(boolean proModeEnabled, long corpusId) throws DatabaseOperationException, IOException, DocumentAccessDeniedException {
         var corpusVm = db.getCorpusById(corpusId).getViewModel();
-        var searchQuery = StringUtils.replaceSpacesInQuotes(this.originalQuery);
+        var searchQuery = StringUtils.replaceSpacesInQuotes(this.originalQuery).replaceAll("[\"\"“”‘’«»]", "'");
         var tokens = searchQuery.split(" ");
         var delimiter = proModeEnabled ? "'" : "\"";
         var or = proModeEnabled ? " | " : " or ";

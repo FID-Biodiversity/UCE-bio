@@ -144,7 +144,7 @@ public class SearchApi implements UceApi {
         var languageResources = LanguageResources.fromRequest(ctx);
 
         try {
-            var searchInput = requestBody.get("searchInput").toString();
+            var searchInput = requestBody.get("searchInput").toString().replaceAll("[\"\"“”‘’«»]", "'");
             var corpusId = Long.parseLong(requestBody.get("corpusId").toString());
             model.put("corpusVm", db.getCorpusById(corpusId).getViewModel());
             var fulltextOrNeLayer = requestBody.get("fulltextOrNeLayer").toString();

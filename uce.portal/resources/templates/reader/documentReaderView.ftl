@@ -219,7 +219,7 @@
                                         <a class="btn bg-lightgray rounded light-border xsmall-font open-wiki-page
                                         align-items-center flexed hoverable"
                                         data-wid="${document.getWikiId()}">
-                                            <i class="fab fa-medium-m bg-light light-border rounded p-1 mr-2"></i>
+                                            <i class=" fa-medium-m Large-font m-2 fab"></i>
                                             <span class="font-italic text-secondary"
                                                 style="margin-top: 3px">${languageResource.get("showUceMetadata")}...</span>
                                         </a>
