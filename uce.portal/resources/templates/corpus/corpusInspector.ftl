@@ -2,7 +2,7 @@
     <#include "*/css/corpus-inspector.css">
 </style>
 <div class="row m-0 p-0 w-100">
-
+    <#include "*/headerBiofid.ftl"/>
     <!-- corpus statistics -->
     <div class="col-md-4 p-0 m-0">
         <div class="cheader w-100 flexed align-items-center justify-content-between p-4">
@@ -30,7 +30,7 @@
             </div>
 
             <!-- Annotations -->
-            <h6 class="large-font mb-2 mt-4 text-center color-prime">Annotations</h6>
+            <h6 class="large-font mb-2 mt-4 text-center color-prime">${languageResource.get("annotations")}</h6>
             <div class="group-box">
                 <#include "*/corpus/components/corpusAnnotations.ftl"/>
             </div>

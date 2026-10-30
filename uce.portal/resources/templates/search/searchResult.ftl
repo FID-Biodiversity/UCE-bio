@@ -128,7 +128,7 @@
                 
                     <div class="flexed">
                         <div class="flexed align-items-center w-100">
-                            <p class="mb-0 mr-1">Published</p>
+                            <p class="mb-0 mr-1">${languageResource.get("searchResultPublished")}</p>
                             <a class="btn m-0 rounded-a small-font sort-btn" data-orderby="published"
                                data-curorder="ASC">
                                 <i class="fas fa-sort-amount-up"></i>

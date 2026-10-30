@@ -1240,3 +1240,11 @@ nav .selected-nav-btn.text::before {
 }
 
 /* UCE Map styles end */
+.dotted-bg {
+    background-color: rgb(236, 235, 235);
+    background-image:
+    radial-gradient(rgba(0, 100, 0, 0.5) 1.5px, transparent 1.5px),
+    radial-gradient(rgba(0, 100, 0,  0.5) 1.5px, transparent 1.5px);
+    background-size: 24px 24px;
+    background-position: 0 0, 12px 12px;
+}

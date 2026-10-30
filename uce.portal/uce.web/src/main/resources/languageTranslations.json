@@ -87,6 +87,14 @@
     "de-DE": "Der <b>U</b>nified <b>C</b>orpus <b>E</b>xplorer wurde entwickelt vom Text Technology Lab.",
     "en-EN": "The <b>U</b>nified <b>C</b>orpus <b>E</b>xplorer was developed by the Text Technology Lab."
   },
+    "biofidFooter": {
+    "de-DE": "Der <b>U</b>nified <b>C</b>orpus <b>E</b>xplorer ist Teil des Angebots des Fachinformationsdienstes Biodiversitätsforschung.",
+    "en-EN": "The <b>U</b>nified <b>C</b>orpus <b>E</b>xplorer is part of the services provided by the Specialised Information Service Biodiversity Research "
+  },
+    "biofidFooterHeader": {
+    "de-DE": "Fachinformationsdienst Biodiversitätsforschung",
+    "en-EN": "Specialised Information Service Biodiversity Research "
+  },
   "searchStateNotFound": {
     "de-DE": "Ihre aktive Suche wurde nicht gefunden. Diese werden nach einer Stunde automatisch gelöscht. Sollte dies der Fall sein, starten Sie bitte eine neue Suche.",
     "en-EN": " Your active search was not found. These are automatically deleted after one hour. If this is the case, please start a new one."
@@ -566,5 +574,42 @@
   "documentAccessDeniedError": {
     "en-EN": "You are not allowed to view this document.",
     "de-DE": "Sie haben keine Berechtigung, dieses Dokument zu sehen."
+  },
+  "biofidHeaderHome": {
+    "en-EN": "BIOfid Home",
+    "de-DE": "BIOfid Startseite"
+  },
+  "biofidHeaderTeam": {
+    "en-EN": "Team",
+    "de-DE": "Team"
+  },
+  "biofidHeaderContact": {
+    "en-EN": "Contact",
+    "de-DE": "Kontakt"
+  },
+  "biofidHeaderSuggestion": {
+    "en-EN": "Suggestion",
+    "de-DE": "Kaufvorschläge"
+  },
+  "biofidHeaderPublications": {
+    "en-EN": "Publications",
+    "de-DE": "Publikationen"
+  },
+  "searchResultPublished": {
+    "en-EN": "Published",
+    "de-DE": "Veröffentlicht"
+  },
+  "DocumentPermissions":{
+    "en-EN": "Document Permissions",
+    "de-DE": "Zulassungsbeschränkungen des Dokuments"
+  },
+  "DocumentMetadata":{
+    "en-EN": "Document Metadata",
+    "de-DE": "Metadaten des Dokuments"
+  },
+  "LinkableSpace":{
+    "en-EN": "Linkable Space",
+    "de-DE": "Verlinkungen"
   }
+
 }

@@ -67,8 +67,8 @@
                              data-id="${document.getId()?string?replace('.', '')?replace(',', '')}">
                             <h6 class="title mb-0">${document.getDocumentTitle()}</h6>
                         </div>
-                        <label class="xsmall-font text mb-1 font-italic"><i class="fas fa-id-card-alt"></i>
-                            (${document.getDocumentId()})</label>
+                        <!-- <label class="xsmall-font text mb-1 font-italic"><i class="fas fa-id-card-alt"></i>
+                            (${document.getDocumentId()})</label> -->
                     </div>
 
                 </div>

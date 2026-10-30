@@ -1005,7 +1005,7 @@ public class Importer {
             else {
                 // Get MetadataTitleInfo from document UceMetadata
                 try {
-                    String author = document.getUceMetadata().stream().filter(data -> "author".equals(data.getKey())).findFirst().map(UCEMetadata::getValue).orElse("");
+                    String author = document.getUceMetadata().stream().filter(data -> "author".equals(data.getKey())).map(UCEMetadata::getValue).collect(Collectors.joining(", "));//document.getUceMetadata().stream().filter(data -> "author".equals(data.getKey())).findFirst().map(UCEMetadata::getValue).orElse("");
                     author =org.apache.commons.lang3.StringEscapeUtils.unescapeJava(author);
 
                     metadataTitleInfo.setPublished(document.getUceMetadata().stream().filter(data -> "publication_year".equals(data.getKey())).findFirst().map(UCEMetadata::getValue).orElse(""));

@@ -11,6 +11,8 @@ import javax.persistence.Entity;
 import javax.persistence.Table;
 import java.util.Comparator;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Entity
 @Table(name = "ucemetadata")
@@ -75,12 +77,29 @@ public class UCEMetadata extends ModelBase {
     /**
      * Gets a potentially cleaner version of the value, e.g. decimal numbers are rounded and the likes.
      */
+    private String decodeUnicodeEscapes(String input) {
+    Pattern pattern = Pattern.compile("\\\\u([0-9a-fA-F]{4})");
+    Matcher matcher = pattern.matcher(input);
+    StringBuffer result = new StringBuffer();
+
+    while (matcher.find()) {
+        char decoded = (char) Integer.parseInt(matcher.group(1), 16);
+
+        matcher.appendReplacement(
+            result,
+            Matcher.quoteReplacement(String.valueOf(decoded))
+        );
+    }
+
+    matcher.appendTail(result);
+    return result.toString();
+}
     public String getCleanValue(){
         if(getValue() == null) return "";
         if(valueType == UCEMetadataValueType.NUMBER){
             return StringUtils.tryRoundToTwoDecimals(getValue());
         }
-        return getValue();
+        return decodeUnicodeEscapes(getValue());
     }
 
     public String getValue() {

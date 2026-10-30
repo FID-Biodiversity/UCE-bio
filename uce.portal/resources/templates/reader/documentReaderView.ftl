@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html  lang="${languageResource.getDefaultLanguage()}">
 <head>
     <link rel="stylesheet" href="css/bootstrap/bootstrap.min.css">
     <link rel="stylesheet" href="css/animate.min.css">
@@ -68,12 +68,14 @@
     </script>
 
     <title>${document.getDocumentTitle()}</title>
+    <link href="css/biofid-css.css" rel="stylesheet">
+
 </head>
 
 <body class="no-cursor">
 
     <#include "*/messageModal.ftl">
-
+    <#include "*/headerBiofid.ftl"/>
 <#if activeMode?has_content && activeMode == "document_reader_feedback_view">
     <div class="site-container feedback-mode with-view-nav">
         <#if renderModes?has_content>

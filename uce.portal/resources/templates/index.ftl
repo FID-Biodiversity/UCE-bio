@@ -99,16 +99,10 @@
     <!-- this object must be set on any site we use within UCE -->
     <div id="prime-color-container" class="color-prime"></div>
 
+    <!-- biofid navbar -->
+    <#include "*/headerBiofid.ftl"/>
+    <!-- top nav bar -->
     <nav class="position-relative top-menu">
-
-
-        <!-- Logo-image 
-            <div class="container-fluid flexed align-items-center justify-content-evenly">
-                <div class="flexed h-100 pr-2">
-                    <button class="btn switch-view-btn selected-nav-btn" data-id="landing">
-                        <img class="mb-0 logo" src="${uceConfig.getCorporate().getLogo()}">
-                    </button>
-                    -->
 
         <!-- Logo-image -->
             <div class="container-fluid flexed align-items-center justify-content-evenly">
@@ -206,12 +200,13 @@
                                     </a>
                                 </li>
                             </#if>
-
+                            <!-- 
                             <li class="nav-item top-menu-item">
                                 <a class="nav-link switch-view-btn" data-id="team">
                                     <i class="fas fa-users color-prime"></i>
                                 </a>
                             </li>
+                            -->
                         </ul>
 
                         <!-- LANGUAGE -->
@@ -259,10 +254,10 @@
                                 <i class="fas fa-chart-pie color-prime mr-2"></i> Analysis
                             </a>
                         </#if>
-
+                        <!-- 
                         <a class="dropdown-item switch-view-btn text-center" data-id="team">
                             <i class="fas fa-users color-prime mr-2"></i> Team
-                        </a>
+                        </a> -->
 
                         <div class="dropdown-divider"></div>
 
@@ -317,9 +312,9 @@
         </div>
 
         <!-- searching -->
-        <div class="view pt-5" data-id="search">
+        <div class="view pt-5 dotted-bg" data-id="search">
 
-            <!-- A small bg animation - nothing more -->
+            <!-- A small bg animation - nothing more 
             <div class="bg-anim">
                 <ul class="circles">
                     <li></li>
@@ -334,7 +329,7 @@
                     <li></li>
                 </ul>
             </div>
-
+            -->
             <!-- actual content -->
             <div class="flexed align-items-stretch search-header container p-0">
                 <div class="flexed align-items-center h-100 position-relative" style="z-index: 2">
@@ -583,6 +578,27 @@
 
 </body>
 
+
+<!-- BIOfid v2 
+<footer class="bg-lightgray pt-5 pb-5">
+    <div class="container h-100 text-center flexed align-items-center justify-content-center">
+    <div class="col-sm-12 text-dark w-100 m-0 flexed justify-content-center">
+    <img class="w-100" src="/img/biofid-website-logos-all.png"/>
+    </div>
+                <div class="col-sm-3 text-dark w-100 m-0 flexed justify-content-center">
+                <div class="group-box bg-light mb-0">
+                    <h6 class="text-dark">Powered by the <a href="https://texttechnologylab.github.io/UCE/"
+                                                            target="_blank">Unified Corpus Explorer</a></h6>
+                    <a href="https://github.com/texttechnologylab/UCE" target="_blank">
+                        <img class="w-100" style="max-width: 125px" src="/img/logo.png"/>
+                    </a>
+                    <p class="mb-0 text xsmall-font align-self-center"><b>Version</b> <i>${uceVersion}</i></p>
+                </div>
+            </div>
+    </div>
+</footer>
+-->
+
 <footer class="bg-lightgray pt-5 pb-5">
     <div class="container h-100 text-center flexed align-items-center justify-content-center">
         <div class="row m-0 p-0 w-100 h-100">
@@ -601,7 +617,7 @@
                             <i class="fas fa-globe-europe mr-1"></i> Website
                         </a>
                         <p class="mb-0">${uceConfig.getCorporate().getContact().getAddress()}</p>
-                        <a class="mt-1" href="/imprint">
+                        <a class="mt-1" href="https://www.uni-frankfurt.de/de/impressum">
                             <i class="fas fa-gavel mr-1"></i> ${languageResource.get("imprint")}
                         </a>
                     </div>
@@ -610,6 +626,9 @@
 
             <!-- add more footer here later -->
             <div class="col-sm-6 text-dark w-100 m-0 flexed justify-content-center">
+            <!-- BIOfid v1 
+            <div class="col-sm-3 text-dark w-100 m-0 flexed justify-content-center"> 
+            -->
                 <div class="group-box bg-light mb-0">
                     <h6 class="text-dark">Powered by the <a href="https://texttechnologylab.github.io/UCE/"
                                                             target="_blank">Unified Corpus Explorer</a></h6>
@@ -619,6 +638,24 @@
                     <p class="mb-0 text xsmall-font align-self-center"><b>Version</b> <i>${uceVersion}</i></p>
                 </div>
             </div>
+
+            <!-- BIOfid v1 
+            <div class="col-md-3 text-dark text-center justify-content-center">
+                <div class="group-box bg-light mb-0">
+                    <a href="https://www.biofid.de" target="_blank">
+                        <h6 class="color-prime">${languageResource.get("biofidFooterHeader")}</h6>
+                    </a>
+                    <div class="small-font">
+                        <p class="mb-0">
+                            ${languageResource.get("biofidFooter")}
+                        </p>
+                         <a href="https://www.biofid.de" target="_blank">
+                        <img class="w-100 mt-2"src="/img/logo-biofid.png"/>
+                         </a>
+                    </div>
+                </div>
+            </div>
+            -->
 
             <!-- TTLab -->
             <div class="col-md-3 text-dark text-right justify-content-center">

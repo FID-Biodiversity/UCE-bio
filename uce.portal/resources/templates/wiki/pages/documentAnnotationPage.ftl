@@ -30,14 +30,14 @@
 
     <!-- all permissions of this document -->
     <div class="mt-2 mb-4 w-100 p-0 m-0">
-        <h5 class="text-center mb-2">Document Permissions</h5>
+        <h5 class="text-center mb-2">${languageResource.get("DocumentPermissions")}</h5>
         <#assign uceDocumentPermissions = vm.getDocument().getPermissions()!>
         <#include "*/document/documentPermissions.ftl">
     </div>
 
     <!-- possible metadata of this document -->
     <div class="mt-2 mb-4 w-100 p-0 m-0">
-        <h5 class="text-center mb-2">Document Metadata</h5>
+        <h5 class="text-center mb-2">${languageResource.get("DocumentMetadata")}</h5>
         <div class="light-border rounded p-3 bg-light card-shadow">
             <#assign uceMetadata = vm.getUceMetadata()!>
             <#include "*/document/documentUceMetadata.ftl">

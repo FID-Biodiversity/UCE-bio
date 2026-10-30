@@ -158,7 +158,7 @@ $('body').on('click', '.open-corpus-inspector-btn', function () {
     }
 
     // If the wiki modal is currently open, close it.
-    $('.corpus-inspector-include').show(0);
+    $('.corpus-inspector-include').removeClass('display-none');
     $('.wiki-page-modal').addClass('wiki-page-modal-minimized');
 
     $.ajax({

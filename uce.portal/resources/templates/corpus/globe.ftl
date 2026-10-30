@@ -12,11 +12,12 @@
         <#include "*/css/site.css">
         <#include "*/css/globe.css">
     </style>
+    <link href="css/biofid-css.css" rel="stylesheet">
 </head>
 <body>
 
 <div class="site-container">
-
+<#include "*/headerBiofid.ftl"/>
     <!-- this object must be set on any site we use within UCE -->
     <div id="prime-color-container" class="color-prime"></div>
 
