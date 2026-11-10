@@ -579,32 +579,12 @@
 </body>
 
 
-<!-- BIOfid v2 
-<footer class="bg-lightgray pt-5 pb-5">
-    <div class="container h-100 text-center flexed align-items-center justify-content-center">
-    <div class="col-sm-12 text-dark w-100 m-0 flexed justify-content-center">
-    <img class="w-100" src="/img/biofid-website-logos-all.png"/>
-    </div>
-                <div class="col-sm-3 text-dark w-100 m-0 flexed justify-content-center">
-                <div class="group-box bg-light mb-0">
-                    <h6 class="text-dark">Powered by the <a href="https://texttechnologylab.github.io/UCE/"
-                                                            target="_blank">Unified Corpus Explorer</a></h6>
-                    <a href="https://github.com/texttechnologylab/UCE" target="_blank">
-                        <img class="w-100" style="max-width: 125px" src="/img/logo.png"/>
-                    </a>
-                    <p class="mb-0 text xsmall-font align-self-center"><b>Version</b> <i>${uceVersion}</i></p>
-                </div>
-            </div>
-    </div>
-</footer>
--->
-
 <footer class="bg-lightgray pt-5 pb-5">
     <div class="container h-100 text-center flexed align-items-center justify-content-center">
         <div class="row m-0 p-0 w-100 h-100">
 
             <!-- contacts -->
-            <div class="col-sm-3 text-dark m-0 justify-content-center flexed">
+            <div class="col-sm-3 text-dark w-100 m-0 flexed justify-content-center">
                 <div class="group-box bg-light mb-0">
                     <h6 class="text-left color-prime">${languageResource.get("contact")}</h6>
                     <div class="small-font text-left">
@@ -624,11 +604,9 @@
                 </div>
             </div>
 
-            <!-- add more footer here later -->
-            <div class="col-sm-6 text-dark w-100 m-0 flexed justify-content-center">
-            <!-- BIOfid v1 
+            <!-- BIOfid footer -->
             <div class="col-sm-3 text-dark w-100 m-0 flexed justify-content-center"> 
-            -->
+            
                 <div class="group-box bg-light mb-0">
                     <h6 class="text-dark">Powered by the <a href="https://texttechnologylab.github.io/UCE/"
                                                             target="_blank">Unified Corpus Explorer</a></h6>
@@ -639,8 +617,8 @@
                 </div>
             </div>
 
-            <!-- BIOfid v1 
-            <div class="col-md-3 text-dark text-center justify-content-center">
+            <!-- BIOfid v1 -->
+            <div class="col-sm-3 text-dark w-100 m-0 flexed justify-content-center">
                 <div class="group-box bg-light mb-0">
                     <a href="https://www.biofid.de" target="_blank">
                         <h6 class="color-prime">${languageResource.get("biofidFooterHeader")}</h6>
@@ -655,10 +633,10 @@
                     </div>
                 </div>
             </div>
-            -->
+            
 
             <!-- TTLab -->
-            <div class="col-md-3 text-dark text-right justify-content-center">
+            <div class="col-sm-3 text-dark w-100 m-0 flexed justify-content-center">
                 <div class="group-box bg-light mb-0">
                     <a href="https://www.texttechnologylab.org/" target="_blank">
                         <h6 class="color-prime">Text Technology Lab</h6>

@@ -1,3 +1,4 @@
+<div style="position: relative;">
 <div class="mt-0 search-state" data-id="${searchState.getSearchId()}">
 
     <div class="header">
@@ -25,7 +26,7 @@
             </div>
         </div>
     </#if>
-
+    
     <div class="row mb-0 mr-0 ml-0 pb-5">
 
         <div class="col-lg-3 position-relative search-row" style="display: None;" data-type="left">
@@ -235,5 +236,6 @@
             </div>
         </div>
     </div>
-
+    
+</div>
 </div>
