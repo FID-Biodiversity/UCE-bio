@@ -15,6 +15,10 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <javaVersion>21</javaVersion>
+        <maven.compiler.release>21</maven.compiler.release>
+        <maven.compiler.source>21</maven.compiler.source>
+        <maven.compiler.target>21</maven.compiler.target>
     </properties>
 
     <repositories>
@@ -149,6 +153,9 @@
                         <descriptorRef>jar-with-dependencies</descriptorRef>
                     </descriptorRefs>
                     <finalName>webportal</finalName>
+                    <filters>
+                        <filter>META-INF/**</filter>
+                    </filters>
                     <archive>
                         <manifest>
                             <mainClass>org.texttechnologylab.uce.web.App</mainClass>
